@@ -59,7 +59,7 @@ public class TokenController {
                             .googleSub(googleSub)
                             .defaultCurrency("USD")
                             .build());
-                    categoryService.seedDefaultCategories(newUser);
+                    categoryService.seedDefaultDataForUser(newUser);
                     return newUser;
                 });
 

@@ -1,65 +1,63 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import axiosInstance from '../../api/axiosInstance';
+import { useAuth } from '../../context/AuthContext';
+import { getCategoryIcon } from '../../api/utils';
 import styles from './AddTransactionModal.module.css';
-
-// ── Static placeholder data (categories / accounts) ──────────────────────────
-// In follow-up session these will be fetched from the API on modal open.
-const CATEGORIES_BY_TYPE = {
-  EXPENSE: [
-    { id: 2, name: 'Groceries', icon: '🛒', parentName: 'Food' },
-    { id: 4, name: 'Restaurants', icon: '🍕', parentName: 'Food' },
-    { id: 6, name: 'Public Transit', icon: '🚌', parentName: 'Transport' },
-    { id: 8, name: 'Streaming', icon: '📺', parentName: 'Entertainment' },
-    { id: 10, name: 'Electricity', icon: '⚡', parentName: 'Utilities' },
-    { id: 12, name: 'Gym', icon: '🏋️', parentName: 'Health' },
-    { id: 14, name: 'Clothing', icon: '👕', parentName: 'Shopping' },
-  ],
-  INCOME: [
-    { id: 20, name: 'Salary', icon: '💼', parentName: null },
-    { id: 21, name: 'Freelance', icon: '💻', parentName: null },
-    { id: 22, name: 'Dividends', icon: '📈', parentName: 'Investments' },
-    { id: 23, name: 'Rental Income', icon: '🏠', parentName: null },
-  ],
-  SAVINGS: [
-    { id: 30, name: 'Emergency Fund', icon: '🏦', parentName: null },
-    { id: 31, name: 'Vacation', icon: '🏖️', parentName: null },
-    { id: 32, name: 'New Car', icon: '🚗', parentName: null },
-  ],
-};
-
-const ACCOUNTS = [
-  { id: 1, name: 'Primary Checking', type: 'CHECKING' },
-  { id: 2, name: 'Savings Account', type: 'SAVINGS' },
-];
 
 const FREQ_OPTIONS = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
 const FREQ_LABELS = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-const INITIAL = {
-  type: 'EXPENSE',
-  amount: '',
-  currency: 'USD',
-  exchangeRate: '',
-  categoryId: null,
-  date: today(),
-  accountId: '',
-  notes: '',
-  makeRecurring: false,
-  frequency: 'MONTHLY',
-  interval: 1,
-  endDate: '',
-};
-
 export default function AddTransactionModal({ onClose }) {
-  const [form, setForm] = useState(INITIAL);
+  const { user } = useAuth();
+  const [form, setForm] = useState({
+    type: 'EXPENSE',
+    amount: '',
+    currency: user?.defaultCurrency || 'USD',
+    exchangeRate: '',
+    categoryId: null,
+    date: today(),
+    accountId: '',
+    notes: '',
+    makeRecurring: false,
+    frequency: 'MONTHLY',
+    interval: 1,
+    endDate: '',
+  });
+
+  const [dbCategories, setDbCategories] = useState([]);
+  const [dbAccounts, setDbAccounts] = useState([]);
   const [categorySearch, setCategorySearch] = useState('');
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const amountRef = useRef(null);
   const backdropRef = useRef(null);
+
+  // Fetch categories and accounts on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [catsRes, accountsRes] = await Promise.all([
+          axiosInstance.get('/v1/categories'),
+          axiosInstance.get('/v1/accounts')
+        ]);
+        setDbCategories(catsRes.data);
+        setDbAccounts(accountsRes.data);
+      } catch (err) {
+        console.error("Failed to load categories/accounts in modal", err);
+      }
+    }
+    loadData();
+  }, []);
+
+  // Update default currency when user info becomes available
+  useEffect(() => {
+    if (user?.defaultCurrency) {
+      setForm(f => ({ ...f, currency: user.defaultCurrency }));
+    }
+  }, [user]);
 
   // Auto-focus amount on open
   useEffect(() => {
@@ -82,6 +80,35 @@ export default function AddTransactionModal({ onClose }) {
 
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
 
+  // Dynamically group categories by type
+  const CATEGORIES_BY_TYPE = useMemo(() => {
+    const result = { EXPENSE: [], INCOME: [], SAVINGS: [] };
+    const catMap = new Map(dbCategories.map(c => [c.id, c]));
+
+    dbCategories.forEach(c => {
+      const parent = c.parentId ? catMap.get(c.parentId) : null;
+      const mapped = {
+        id: c.id,
+        name: c.name,
+        icon: getCategoryIcon(c.icon),
+        parentName: parent ? parent.name : null,
+      };
+      if (result[c.type]) {
+        result[c.type].push(mapped);
+      }
+    });
+    return result;
+  }, [dbCategories]);
+
+  // Dynamically map accounts (stored as uppercase ACCOUNTS to match select element loop reference)
+  const ACCOUNTS = useMemo(() => {
+    return dbAccounts.map(a => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+    }));
+  }, [dbAccounts]);
+
   const categories = CATEGORIES_BY_TYPE[form.type] ?? [];
   const recentChips = categories.slice(0, 6);
   const searchResults = categorySearch.length >= 2
@@ -92,7 +119,7 @@ export default function AddTransactionModal({ onClose }) {
     : [];
 
   const selectedCategory = categories.find((c) => c.id === form.categoryId);
-  const showExchangeRate = form.currency !== 'USD';
+  const showExchangeRate = form.currency !== (user?.defaultCurrency || 'USD');
 
   async function handleSave() {
     if (!form.amount || !form.categoryId) return;
@@ -102,7 +129,7 @@ export default function AddTransactionModal({ onClose }) {
 
     const payload = {
       categoryId: form.categoryId,
-      accountId: form.accountId || undefined,
+      accountId: form.accountId ? parseInt(form.accountId, 10) : undefined,
       amount: parseFloat(form.amount),
       currency: form.currency,
       type: form.type,
@@ -121,6 +148,7 @@ export default function AddTransactionModal({ onClose }) {
 
     try {
       await axiosInstance.post('/v1/transactions', payload);
+      window.dispatchEvent(new Event('transaction-added'));
       onClose();
     } catch (err) {
       setSaveError(err.message);

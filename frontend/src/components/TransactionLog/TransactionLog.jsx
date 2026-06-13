@@ -1,24 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import axiosInstance from '../../api/axiosInstance';
+import { getCategoryIcon } from '../../api/utils';
 import styles from './TransactionLog.module.css';
-
-// ── Placeholder data ─────────────────────────────────────────────────────────
-const TRANSACTIONS = [
-  { id: 1, date: '2026-06-13', category: 'Groceries', icon: '🛒', type: 'EXPENSE', amount: -52.40, currency: 'USD', account: 'Primary Checking', notes: 'Weekly grocery run', recurring: false },
-  { id: 2, date: '2026-06-13', category: 'Salary', icon: '💼', type: 'INCOME',  amount: 5200.00, currency: 'USD', account: 'Primary Checking', notes: '', recurring: false },
-  { id: 3, date: '2026-06-12', category: 'Electricity', icon: '⚡', type: 'EXPENSE', amount: -110.00, currency: 'USD', account: 'Primary Checking', notes: '', recurring: true },
-  { id: 4, date: '2026-06-12', category: 'Restaurants', icon: '🍕', type: 'EXPENSE', amount: -34.90, currency: 'USD', account: null, notes: 'Pizza night', recurring: false },
-  { id: 5, date: '2026-06-11', category: 'Emergency Fund', icon: '🏦', type: 'SAVINGS', amount: -500.00, currency: 'USD', account: 'Savings Account', notes: '', recurring: true },
-  { id: 6, date: '2026-06-10', category: 'Public Transit', icon: '🚌', type: 'EXPENSE', amount: -60.00, currency: 'USD', account: 'Primary Checking', notes: 'Monthly pass', recurring: true },
-  { id: 7, date: '2026-06-09', category: 'Freelance', icon: '💻', type: 'INCOME', amount: 800.00, currency: 'USD', account: null, notes: 'Design project', recurring: false },
-  { id: 8, date: '2026-06-08', category: 'Streaming', icon: '📺', type: 'EXPENSE', amount: -15.99, currency: 'USD', account: null, notes: '', recurring: true },
-];
-
-const RECURRING = [
-  { id: 1, category: 'Electricity', icon: '⚡', type: 'EXPENSE', amount: -110.00, currency: 'USD', frequency: 'MONTHLY', nextDate: '2026-07-12' },
-  { id: 2, category: 'Emergency Fund', icon: '🏦', type: 'SAVINGS', amount: -500.00, currency: 'USD', frequency: 'MONTHLY', nextDate: '2026-07-11' },
-  { id: 3, category: 'Public Transit', icon: '🚌', type: 'EXPENSE', amount: -60.00, currency: 'USD', frequency: 'MONTHLY', nextDate: '2026-07-10' },
-  { id: 4, category: 'Streaming', icon: '📺', type: 'EXPENSE', amount: -15.99, currency: 'USD', frequency: 'MONTHLY', nextDate: '2026-07-08' },
-];
 
 const TYPE_FILTER_OPTIONS = ['All', 'INCOME', 'EXPENSE', 'SAVINGS'];
 
@@ -38,13 +21,45 @@ function TypeBadge({ type }) {
   );
 }
 
-function AllTab() {
+function AllTab({ categoriesMap, accountsMap }) {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('All');
   const [search, setSearch] = useState('');
 
-  const filtered = TRANSACTIONS.filter((t) => {
+  const loadTransactions = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get('/v1/transactions');
+      setTransactions(res.data);
+    } catch (err) {
+      console.error('Failed to load transactions', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTransactions();
+    const handleRefresh = () => loadTransactions();
+    window.addEventListener('transaction-added', handleRefresh);
+    return () => {
+      window.removeEventListener('transaction-added', handleRefresh);
+    };
+  }, [loadTransactions]);
+
+  if (loading) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner} aria-hidden="true" />
+        <span>Loading transactions…</span>
+      </div>
+    );
+  }
+
+  const filtered = transactions.filter((t) => {
     if (typeFilter !== 'All' && t.type !== typeFilter) return false;
-    if (search && !t.category.toLowerCase().includes(search.toLowerCase())) return false;
+    const catName = categoriesMap[t.categoryId]?.name || '';
+    if (search && !catName.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
@@ -84,72 +99,176 @@ function AllTab() {
         {filtered.length === 0 && (
           <div className={styles.empty}>No transactions found.</div>
         )}
-        {filtered.map((t) => (
-          <div key={t.id} className={styles.row} role="listitem">
-            <span className={styles.rowIcon} aria-hidden="true">{t.icon}</span>
-            <div className={styles.rowMain}>
-              <div className={styles.rowTop}>
-                <span className={styles.rowCategory}>
-                  {t.category}
-                  {t.recurring && <span className={styles.recurTag} title="Recurring"> 🔁</span>}
-                </span>
-                <span className={`${styles.rowAmount} ${t.amount >= 0 ? styles.positive : styles.negative}`}>
-                  {t.amount >= 0 ? '+' : '−'}{fmt(t.amount, t.currency)}
-                </span>
-              </div>
-              <div className={styles.rowBottom}>
-                <TypeBadge type={t.type} />
-                {t.account && <span className={styles.rowMeta}>{t.account}</span>}
-                <span className={styles.rowDate}>{t.date}</span>
-                {t.notes && <span className={styles.rowNotes} title={t.notes}>📝</span>}
+        {filtered.map((t) => {
+          const category = categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦', color: '#888888' };
+          const accountName = t.accountId ? accountsMap[t.accountId] : null;
+          const isIncome = t.type === 'INCOME';
+
+          return (
+            <div key={t.id} className={styles.row} role="listitem">
+              <span className={styles.rowIcon} aria-hidden="true">{category.icon}</span>
+              <div className={styles.rowMain}>
+                <div className={styles.rowTop}>
+                  <span className={styles.rowCategory}>
+                    {category.name}
+                    {t.recurrenceRuleId && <span className={styles.recurTag} title="Recurring"> 🔁</span>}
+                  </span>
+                  <span className={`${styles.rowAmount} ${isIncome ? styles.positive : styles.negative}`}>
+                    {isIncome ? '+' : '−'}{fmt(t.amount, t.currency)}
+                  </span>
+                </div>
+                <div className={styles.rowBottom}>
+                  <TypeBadge type={t.type} />
+                  {accountName && <span className={styles.rowMeta}>{accountName}</span>}
+                  <span className={styles.rowDate}>{t.date.split('T')[0]}</span>
+                  {t.notes && <span className={styles.rowNotes} title={t.notes}>📝</span>}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
 function RecurringTab() {
+  const [recurring, setRecurring] = useState([]);
+  const [loading, setLoading] = useState(true);
   const FREQ_LABEL = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
+
+  const loadRecurring = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get('/v1/recurrence-rules');
+      setRecurring(res.data);
+    } catch (err) {
+      console.error('Failed to load recurrence rules', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRecurring();
+    const handleRefresh = () => loadRecurring();
+    window.addEventListener('transaction-added', handleRefresh);
+    return () => {
+      window.removeEventListener('transaction-added', handleRefresh);
+    };
+  }, [loadRecurring]);
+
+  async function handleDelete(ruleId, categoryName) {
+    if (!window.confirm(`Are you sure you want to delete the recurring rule for "${categoryName}"? Past transactions will remain in your history, but no new occurrences will be generated.`)) {
+      return;
+    }
+    try {
+      await axiosInstance.delete(`/v1/recurrence-rules/${ruleId}`);
+      loadRecurring();
+      window.dispatchEvent(new Event('transaction-added'));
+    } catch (err) {
+      alert("Failed to delete recurrence rule: " + err.message);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner} aria-hidden="true" />
+        <span>Loading recurring transactions…</span>
+      </div>
+    );
+  }
+
+  if (recurring.length === 0) {
+    return <div className={styles.empty}>No recurring transactions found.</div>;
+  }
 
   return (
     <div className={styles.list} role="list">
-      {RECURRING.map((r) => (
-        <div key={r.id} className={styles.row} role="listitem">
-          <span className={styles.rowIcon} aria-hidden="true">{r.icon}</span>
-          <div className={styles.rowMain}>
-            <div className={styles.rowTop}>
-              <span className={styles.rowCategory}>
-                🔁 {r.category}
-              </span>
-              <span className={`${styles.rowAmount} ${r.amount >= 0 ? styles.positive : styles.negative}`}>
-                {r.amount >= 0 ? '+' : '−'}{fmt(r.amount, r.currency)}
-              </span>
+      {recurring.map((r) => {
+        const icon = getCategoryIcon(r.categoryIcon);
+        const isIncome = r.type === 'INCOME';
+
+        return (
+          <div key={r.id} className={styles.row} role="listitem">
+            <span className={styles.rowIcon} aria-hidden="true">{icon}</span>
+            <div className={styles.rowMain}>
+              <div className={styles.rowTop}>
+                <span className={styles.rowCategory}>
+                  🔁 {r.categoryName}
+                </span>
+                <span className={`${styles.rowAmount} ${isIncome ? styles.positive : styles.negative}`}>
+                  {isIncome ? '+' : '−'}{fmt(r.amount, r.currency)}
+                </span>
+              </div>
+              <div className={styles.rowBottom}>
+                <TypeBadge type={r.type} />
+                <span className={styles.rowMeta}>{FREQ_LABEL[r.frequency]}</span>
+                <span className={styles.rowDate}>Next: {r.nextDate}</span>
+              </div>
             </div>
-            <div className={styles.rowBottom}>
-              <TypeBadge type={r.type} />
-              <span className={styles.rowMeta}>{FREQ_LABEL[r.frequency]}</span>
-              <span className={styles.rowDate}>Next: {r.nextDate}</span>
+            <div className={styles.rowActions}>
+              <button
+                className={styles.actionBtn}
+                title="Delete"
+                aria-label={`Delete ${r.categoryName} recurrence`}
+                onClick={() => handleDelete(r.id, r.categoryName)}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                  <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+              </button>
             </div>
           </div>
-          <div className={styles.rowActions}>
-            <button className={styles.actionBtn} title="Edit" aria-label={`Edit ${r.category} recurrence`}>
-              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-            </button>
-            <button className={styles.actionBtn} title="Delete" aria-label={`Delete ${r.category} recurrence`}>
-              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-            </button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 export default function TransactionLog() {
   const [tab, setTab] = useState('all');
+  const [categoriesMap, setCategoriesMap] = useState({});
+  const [accountsMap, setAccountsMap] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  const loadLookups = useCallback(async () => {
+    try {
+      const [catsRes, accsRes] = await Promise.all([
+        axiosInstance.get('/v1/categories'),
+        axiosInstance.get('/v1/accounts'),
+      ]);
+      const cats = {};
+      catsRes.data.forEach((c) => {
+        cats[c.id] = { name: c.name, icon: getCategoryIcon(c.icon), color: c.color };
+      });
+      const accs = {};
+      accsRes.data.forEach((a) => {
+        accs[a.id] = a.name;
+      });
+      setCategoriesMap(cats);
+      setAccountsMap(accs);
+    } catch (err) {
+      console.error('Failed to load transaction log lookups', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLookups();
+  }, [loadLookups]);
+
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <div className={styles.spinner} aria-hidden="true" />
+          <span>Loading transactions…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -184,7 +303,11 @@ export default function TransactionLog() {
         role="tabpanel"
         aria-labelledby={tab === 'all' ? 'tab-all' : 'tab-recurring'}
       >
-        {tab === 'all' ? <AllTab /> : <RecurringTab />}
+        {tab === 'all' ? (
+          <AllTab categoriesMap={categoriesMap} accountsMap={accountsMap} />
+        ) : (
+          <RecurringTab />
+        )}
       </div>
     </div>
   );

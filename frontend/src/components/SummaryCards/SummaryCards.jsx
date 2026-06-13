@@ -1,21 +1,7 @@
+import { useState, useEffect, useCallback } from 'react';
+import axiosInstance from '../../api/axiosInstance';
+import { getCategoryIcon } from '../../api/utils';
 import styles from './SummaryCards.module.css';
-
-// Placeholder data — will be replaced with live API data in a follow-up session.
-const PLACEHOLDER = {
-  totalBalance: 12_450.75,
-  balanceCurrency: 'USD',
-  monthIncome: 5_200.00,
-  monthExpenses: 3_180.50,
-  budgets: [
-    { label: 'Food & Dining', spent: 420, limit: 600, pct: 70 },
-    { label: 'Transport', spent: 95, limit: 150, pct: 63 },
-    { label: 'Entertainment', spent: 180, limit: 200, pct: 90 },
-  ],
-  savingsGoals: [
-    { label: 'Emergency Fund', current: 4800, target: 10000, pct: 48 },
-    { label: 'Vacation 🏖️', current: 1200, target: 3000, pct: 40 },
-  ],
-};
 
 function fmt(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -39,7 +25,39 @@ function ProgressBar({ pct, variant = 'primary' }) {
 }
 
 export default function SummaryCards() {
-  const { totalBalance, balanceCurrency, monthIncome, monthExpenses, budgets, savingsGoals } = PLACEHOLDER;
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadSummary = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get('/v1/dashboard-summary');
+      setData(res.data);
+    } catch (err) {
+      console.error('Failed to load dashboard summary', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+    const handleRefresh = () => loadSummary();
+    window.addEventListener('transaction-added', handleRefresh);
+    return () => {
+      window.removeEventListener('transaction-added', handleRefresh);
+    };
+  }, [loadSummary]);
+
+  if (loading || !data) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner} aria-hidden="true" />
+        <span>Loading financial overview…</span>
+      </div>
+    );
+  }
+
+  const { totalBalance, balanceCurrency, monthIncome, monthExpenses, budgets, savingsGoals } = data;
   const netSavings = monthIncome - monthExpenses;
 
   return (
@@ -87,9 +105,11 @@ export default function SummaryCards() {
         <div className={styles.goalSection}>
           <span className={styles.goalSectionTitle}>Budgets</span>
           {budgets.map((b) => (
-            <div key={b.label} className={styles.goalRow}>
+            <div key={b.id} className={styles.goalRow}>
               <div className={styles.goalMeta}>
-                <span className={styles.goalName}>{b.label}</span>
+                <span className={styles.goalName}>
+                  {getCategoryIcon(b.categoryIcon)} {b.categoryName}
+                </span>
                 <span className={`${styles.goalPct} ${b.pct >= 90 ? styles.goalPctDanger : ''}`}>{b.pct}%</span>
               </div>
               <ProgressBar pct={b.pct} variant="primary" />
@@ -101,9 +121,11 @@ export default function SummaryCards() {
         <div className={styles.goalSection}>
           <span className={styles.goalSectionTitle}>Savings</span>
           {savingsGoals.map((g) => (
-            <div key={g.label} className={styles.goalRow}>
+            <div key={g.id} className={styles.goalRow}>
               <div className={styles.goalMeta}>
-                <span className={styles.goalName}>{g.label}</span>
+                <span className={styles.goalName}>
+                  {getCategoryIcon(g.categoryIcon)} {g.categoryName}
+                </span>
                 <span className={styles.goalPct}>{g.pct}%</span>
               </div>
               <ProgressBar pct={g.pct} variant="tertiary" />

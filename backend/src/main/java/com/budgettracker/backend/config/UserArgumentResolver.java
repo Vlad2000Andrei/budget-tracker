@@ -2,6 +2,7 @@ package com.budgettracker.backend.config;
 
 import com.budgettracker.backend.model.User;
 import com.budgettracker.backend.repository.UserRepository;
+import com.budgettracker.backend.service.CategoryService;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -13,9 +14,11 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 public class UserArgumentResolver implements HandlerMethodArgumentResolver {
 
     private final UserRepository userRepository;
+    private final CategoryService categoryService;
 
-    public UserArgumentResolver(UserRepository userRepository) {
+    public UserArgumentResolver(UserRepository userRepository, CategoryService categoryService) {
         this.userRepository = userRepository;
+        this.categoryService = categoryService;
     }
 
     @Override
@@ -50,12 +53,16 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
         // Default behavior: Provision and return a default mock user for local development and testing
         String defaultSub = "mock-google-sub-123";
         return userRepository.findByGoogleSub(defaultSub)
-                .orElseGet(() -> userRepository.save(
-                        User.builder()
-                                .email("test@example.com")
-                                .googleSub(defaultSub)
-                                .defaultCurrency("USD")
-                                .build()
-                ));
+                .orElseGet(() -> {
+                    User newUser = userRepository.save(
+                            User.builder()
+                                    .email("test@example.com")
+                                    .googleSub(defaultSub)
+                                    .defaultCurrency("USD")
+                                    .build()
+                    );
+                    categoryService.seedDefaultDataForUser(newUser);
+                    return newUser;
+                });
     }
 }
