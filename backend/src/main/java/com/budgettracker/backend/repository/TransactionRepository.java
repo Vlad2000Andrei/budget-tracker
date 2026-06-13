@@ -109,6 +109,14 @@ public class TransactionRepository {
                 .execute();
     }
 
+    public List<Transaction> findByRecurrenceRuleId(Long recurrenceRuleId) {
+        return dsl.selectFrom(TRANSACTIONS)
+                .where(TRANSACTIONS.RECURRENCE_RULE_ID.eq(recurrenceRuleId))
+                .orderBy(TRANSACTIONS.DATE.asc())
+                .fetch()
+                .map(this::mapRecordToTransaction);
+    }
+
     private Transaction mapRecordToTransaction(TransactionsRecord record) {
         if (record == null) {
             return null;

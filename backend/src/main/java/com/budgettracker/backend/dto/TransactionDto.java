@@ -27,4 +27,5 @@ public class TransactionDto {
     private LocalDateTime date;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private RecurrenceRuleDto recurrenceRule;
 }

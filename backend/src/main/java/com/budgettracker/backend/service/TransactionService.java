@@ -1,6 +1,8 @@
 package com.budgettracker.backend.service;
 
+import com.budgettracker.backend.dto.CreateRecurrenceRuleRequest;
 import com.budgettracker.backend.dto.CreateTransactionRequest;
+import com.budgettracker.backend.dto.RecurrenceRuleDto;
 import com.budgettracker.backend.dto.TransactionDto;
 import com.budgettracker.backend.dto.UpdateTransactionRequest;
 import com.budgettracker.backend.exception.ForbiddenActionException;
@@ -8,10 +10,12 @@ import com.budgettracker.backend.exception.ResourceNotFoundException;
 import com.budgettracker.backend.jooq.enums.CategoryType;
 import com.budgettracker.backend.model.Account;
 import com.budgettracker.backend.model.Category;
+import com.budgettracker.backend.model.RecurrenceRule;
 import com.budgettracker.backend.model.Transaction;
 import com.budgettracker.backend.model.User;
 import com.budgettracker.backend.repository.AccountRepository;
 import com.budgettracker.backend.repository.CategoryRepository;
+import com.budgettracker.backend.repository.RecurrenceRuleRepository;
 import com.budgettracker.backend.repository.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -31,18 +35,21 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final CurrencyExchangeService currencyExchangeService;
     private final SavingsGoalService savingsGoalService;
+    private final RecurrenceRuleRepository recurrenceRuleRepository;
 
     @Autowired
     public TransactionService(TransactionRepository transactionRepository,
                               CategoryRepository categoryRepository,
                               AccountRepository accountRepository,
                               CurrencyExchangeService currencyExchangeService,
-                              SavingsGoalService savingsGoalService) {
+                              SavingsGoalService savingsGoalService,
+                              RecurrenceRuleRepository recurrenceRuleRepository) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.accountRepository = accountRepository;
         this.currencyExchangeService = currencyExchangeService;
         this.savingsGoalService = savingsGoalService;
+        this.recurrenceRuleRepository = recurrenceRuleRepository;
     }
 
     public List<TransactionDto> getTransactions(User user, Long accountId, Long categoryId,
@@ -97,11 +104,26 @@ public class TransactionService {
         BigDecimal exchangeRate = currencyExchangeService.getExchangeRate(request.getCurrency(), user.getDefaultCurrency());
         BigDecimal convertedAmount = request.getAmount().multiply(exchangeRate).setScale(4, java.math.RoundingMode.HALF_UP);
 
+        // Save Recurrence Rule if applicable
+        Long recurrenceRuleId = null;
+        if (request.getRecurrenceRule() != null) {
+            var ruleReq = request.getRecurrenceRule();
+            RecurrenceRule rule = RecurrenceRule.builder()
+                    .frequency(ruleReq.getFrequency())
+                    .interval(ruleReq.getInterval())
+                    .startDate(ruleReq.getStartDate())
+                    .endDate(ruleReq.getEndDate())
+                    .build();
+            rule = recurrenceRuleRepository.save(rule);
+            recurrenceRuleId = rule.getId();
+        }
+
         // Save Transaction
         Transaction transaction = Transaction.builder()
                 .userId(user.getId())
                 .categoryId(request.getCategoryId())
                 .accountId(request.getAccountId())
+                .recurrenceRuleId(recurrenceRuleId)
                 .amount(request.getAmount())
                 .currency(request.getCurrency().toUpperCase())
                 .convertedAmount(convertedAmount)
@@ -248,6 +270,20 @@ public class TransactionService {
         if (transaction == null) {
             return null;
         }
+        RecurrenceRuleDto ruleDto = null;
+        if (transaction.getRecurrenceRuleId() != null) {
+            ruleDto = recurrenceRuleRepository.findById(transaction.getRecurrenceRuleId())
+                    .map(rule -> RecurrenceRuleDto.builder()
+                            .id(rule.getId())
+                            .frequency(rule.getFrequency())
+                            .interval(rule.getInterval())
+                            .startDate(rule.getStartDate())
+                            .endDate(rule.getEndDate())
+                            .createdAt(rule.getCreatedAt())
+                            .updatedAt(rule.getUpdatedAt())
+                            .build())
+                    .orElse(null);
+        }
         return TransactionDto.builder()
                 .id(transaction.getId())
                 .categoryId(transaction.getCategoryId())
@@ -262,6 +298,7 @@ public class TransactionService {
                 .date(transaction.getDate())
                 .createdAt(transaction.getCreatedAt())
                 .updatedAt(transaction.getUpdatedAt())
+                .recurrenceRule(ruleDto)
                 .build();
     }
 }
