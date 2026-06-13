@@ -17,6 +17,10 @@ public class DashboardSummaryDto {
     private String balanceCurrency;
     private BigDecimal monthIncome;
     private BigDecimal monthExpenses;
+    private BigDecimal recurringIncome;
+    private BigDecimal oneOffIncome;
+    private BigDecimal recurringExpenses;
+    private BigDecimal oneOffExpenses;
     private List<BudgetSummaryDto> budgets;
     private List<SavingsGoalSummaryDto> savingsGoals;
     private List<AccountSummaryDto> accounts;

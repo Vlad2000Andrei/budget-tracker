@@ -57,7 +57,9 @@ export default function SummaryCards() {
     );
   }
 
-  const { totalBalance, balanceCurrency, monthIncome, monthExpenses, budgets, savingsGoals, accounts } = data;
+  const { totalBalance, balanceCurrency, monthIncome, monthExpenses,
+          recurringIncome, oneOffIncome, recurringExpenses, oneOffExpenses,
+          budgets, savingsGoals, accounts } = data;
   const netSavings = monthIncome - monthExpenses;
 
   return (
@@ -93,17 +95,37 @@ export default function SummaryCards() {
         <div className={styles.cashFlowRow}>
           <div className={styles.cashItem}>
             <span className={styles.cashIcon} aria-label="Income">↑</span>
-            <div>
+            <div className={styles.cashItemBody}>
               <div className={styles.cashLabel}>Income</div>
               <div className={`${styles.cashAmount} ${styles.income}`}>{fmt(monthIncome, balanceCurrency)}</div>
+              <div className={styles.cashBreakdown}>
+                <span className={styles.cashBreakdownRow}>
+                  <span className={styles.cashBreakdownLabel}>Recurring</span>
+                  <span>{fmt(recurringIncome, balanceCurrency)}</span>
+                </span>
+                <span className={styles.cashBreakdownRow}>
+                  <span className={styles.cashBreakdownLabel}>One-off</span>
+                  <span>{fmt(oneOffIncome, balanceCurrency)}</span>
+                </span>
+              </div>
             </div>
           </div>
           <div className={styles.cashDivider} aria-hidden="true" />
           <div className={styles.cashItem}>
             <span className={styles.cashIcon} aria-label="Expenses">↓</span>
-            <div>
+            <div className={styles.cashItemBody}>
               <div className={styles.cashLabel}>Expenses</div>
               <div className={`${styles.cashAmount} ${styles.expense}`}>{fmt(monthExpenses, balanceCurrency)}</div>
+              <div className={styles.cashBreakdown}>
+                <span className={styles.cashBreakdownRow}>
+                  <span className={styles.cashBreakdownLabel}>Recurring</span>
+                  <span>{fmt(recurringExpenses, balanceCurrency)}</span>
+                </span>
+                <span className={styles.cashBreakdownRow}>
+                  <span className={styles.cashBreakdownLabel}>One-off</span>
+                  <span>{fmt(oneOffExpenses, balanceCurrency)}</span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -121,34 +143,42 @@ export default function SummaryCards() {
 
         <div className={styles.goalSection}>
           <span className={styles.goalSectionTitle}>Budgets</span>
-          {budgets.map((b) => (
-            <div key={b.id} className={styles.goalRow}>
-              <div className={styles.goalMeta}>
-                <span className={styles.goalName}>
-                  {getCategoryIcon(b.categoryIcon)} {b.categoryName}
-                </span>
-                <span className={`${styles.goalPct} ${b.pct >= 90 ? styles.goalPctDanger : ''}`}>{b.pct}%</span>
+          {budgets.length === 0 ? (
+            <div className={styles.emptyState}>No active budgets</div>
+          ) : (
+            budgets.map((b) => (
+              <div key={b.id} className={styles.goalRow}>
+                <div className={styles.goalMeta}>
+                  <span className={styles.goalName}>
+                    {getCategoryIcon(b.categoryIcon)} {b.categoryName}
+                  </span>
+                  <span className={`${styles.goalPct} ${b.pct >= 90 ? styles.goalPctDanger : ''}`}>{b.pct}%</span>
+                </div>
+                <ProgressBar pct={b.pct} variant="primary" />
+                <span className={styles.goalAmounts}>{fmt(b.spent, balanceCurrency)} / {fmt(b.limit, balanceCurrency)}</span>
               </div>
-              <ProgressBar pct={b.pct} variant="primary" />
-              <span className={styles.goalAmounts}>{fmt(b.spent, balanceCurrency)} / {fmt(b.limit, balanceCurrency)}</span>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         <div className={styles.goalSection}>
           <span className={styles.goalSectionTitle}>Savings</span>
-          {savingsGoals.map((g) => (
-            <div key={g.id} className={styles.goalRow}>
-              <div className={styles.goalMeta}>
-                <span className={styles.goalName}>
-                  {getCategoryIcon(g.categoryIcon)} {g.categoryName}
-                </span>
-                <span className={styles.goalPct}>{g.pct}%</span>
+          {savingsGoals.length === 0 ? (
+            <div className={styles.emptyState}>No active savings goals</div>
+          ) : (
+            savingsGoals.map((g) => (
+              <div key={g.id} className={styles.goalRow}>
+                <div className={styles.goalMeta}>
+                  <span className={styles.goalName}>
+                    {getCategoryIcon(g.categoryIcon)} {g.categoryName}
+                  </span>
+                  <span className={styles.goalPct}>{g.pct}%</span>
+                </div>
+                <ProgressBar pct={g.pct} variant="tertiary" />
+                <span className={styles.goalAmounts}>{fmt(g.current, balanceCurrency)} / {fmt(g.target, balanceCurrency)}</span>
               </div>
-              <ProgressBar pct={g.pct} variant="tertiary" />
-              <span className={styles.goalAmounts}>{fmt(g.current, balanceCurrency)} / {fmt(g.target, balanceCurrency)}</span>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

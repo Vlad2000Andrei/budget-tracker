@@ -14,17 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.budgettracker.backend.jooq.enums.AccountType;
-import com.budgettracker.backend.jooq.enums.RolloverRuleType;
-import com.budgettracker.backend.model.Account;
-import com.budgettracker.backend.model.Budget;
-import com.budgettracker.backend.model.SavingsGoal;
-import com.budgettracker.backend.repository.AccountRepository;
-import com.budgettracker.backend.repository.BudgetRepository;
-import com.budgettracker.backend.repository.SavingsGoalRepository;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,19 +22,10 @@ import java.util.stream.Collectors;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final AccountRepository accountRepository;
-    private final BudgetRepository budgetRepository;
-    private final SavingsGoalRepository savingsGoalRepository;
 
     @Autowired
-    public CategoryService(CategoryRepository categoryRepository,
-                           AccountRepository accountRepository,
-                           BudgetRepository budgetRepository,
-                           SavingsGoalRepository savingsGoalRepository) {
+    public CategoryService(CategoryRepository categoryRepository) {
         this.categoryRepository = categoryRepository;
-        this.accountRepository = accountRepository;
-        this.budgetRepository = budgetRepository;
-        this.savingsGoalRepository = savingsGoalRepository;
     }
 
     public List<CategoryDto> getCategories(User user) {
@@ -222,44 +202,12 @@ public class CategoryService {
                 .build());
 
         // 4. Savings (SAVINGS)
-        Category savings = categoryRepository.save(Category.builder()
+        categoryRepository.save(Category.builder()
                 .userId(user.getId())
                 .name("Savings")
                 .type(CategoryType.SAVINGS)
                 .color("#F3FF33")
                 .icon("savings")
-                .build());
-
-        // Seed default Budgets (active for the current calendar month)
-        LocalDate today = LocalDate.now();
-        LocalDate startOfMonth = today.withDayOfMonth(1);
-        LocalDate endOfMonth = today.with(TemporalAdjusters.lastDayOfMonth());
-
-        budgetRepository.save(Budget.builder()
-                .userId(user.getId())
-                .categoryId(food.getId())
-                .amountLimit(new BigDecimal("600.0000"))
-                .startDate(startOfMonth)
-                .endDate(endOfMonth)
-                .rolloverRule(RolloverRuleType.NONE)
-                .build());
-
-        budgetRepository.save(Budget.builder()
-                .userId(user.getId())
-                .categoryId(utilities.getId())
-                .amountLimit(new BigDecimal("150.0000"))
-                .startDate(startOfMonth)
-                .endDate(endOfMonth)
-                .rolloverRule(RolloverRuleType.NONE)
-                .build());
-
-        // Seed default Savings Goals (target in 12 months)
-        savingsGoalRepository.save(SavingsGoal.builder()
-                .userId(user.getId())
-                .categoryId(savings.getId())
-                .targetAmount(new BigDecimal("10000.0000"))
-                .currentAmount(BigDecimal.ZERO)
-                .targetDate(today.plusYears(1))
                 .build());
     }
 
