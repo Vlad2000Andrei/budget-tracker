@@ -39,4 +39,6 @@ public class UpdateTransactionRequest {
 
     @NotNull(message = "Date is required")
     private LocalDateTime date;
+
+    private CreateRecurrenceRuleRequest recurrenceRule;
 }

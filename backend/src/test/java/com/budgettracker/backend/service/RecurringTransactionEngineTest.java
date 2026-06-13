@@ -3,6 +3,7 @@ package com.budgettracker.backend.service;
 import com.budgettracker.backend.dto.CreateRecurrenceRuleRequest;
 import com.budgettracker.backend.dto.CreateTransactionRequest;
 import com.budgettracker.backend.dto.TransactionDto;
+import com.budgettracker.backend.dto.UpdateTransactionRequest;
 import com.budgettracker.backend.jooq.enums.AccountType;
 import com.budgettracker.backend.jooq.enums.CategoryType;
 import com.budgettracker.backend.jooq.enums.RecurrenceFrequency;
@@ -170,5 +171,104 @@ public class RecurringTransactionEngineTest {
         // Account balance should have been reduced by $40 ($10 * 4 transactions)
         Account updatedAccount = accountRepository.findById(account.getId()).orElseThrow();
         assertEquals(new BigDecimal("960.0000"), updatedAccount.getBalance());
+    }
+
+    @Test
+    public void testUpdateTransaction_RecurrenceRuleChange() {
+        // Create initially recurring transaction
+        CreateRecurrenceRuleRequest ruleRequest = CreateRecurrenceRuleRequest.builder()
+                .frequency(RecurrenceFrequency.WEEKLY)
+                .interval(1)
+                .startDate(LocalDate.of(2026, 6, 1))
+                .build();
+
+        CreateTransactionRequest txRequest = CreateTransactionRequest.builder()
+                .categoryId(expenseCategory.getId())
+                .accountId(account.getId())
+                .amount(new BigDecimal("20.00"))
+                .currency("USD")
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .notes("Weekly Sub")
+                .recurrenceRule(ruleRequest)
+                .build();
+
+        TransactionDto created = transactionService.createTransaction(txRequest, testUser);
+        Long ruleId = created.getRecurrenceRuleId();
+        assertNotNull(ruleId);
+
+        // 1. Update the recurrence details (e.g. change frequency to DAILY)
+        CreateRecurrenceRuleRequest updatedRuleRequest = CreateRecurrenceRuleRequest.builder()
+                .frequency(RecurrenceFrequency.DAILY)
+                .interval(2)
+                .startDate(LocalDate.of(2026, 6, 2))
+                .build();
+
+        UpdateTransactionRequest updateRequest = UpdateTransactionRequest.builder()
+                .categoryId(expenseCategory.getId())
+                .accountId(account.getId())
+                .amount(new BigDecimal("20.00"))
+                .currency("USD")
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .notes("Daily Sub")
+                .recurrenceRule(updatedRuleRequest)
+                .build();
+
+        TransactionDto updated = transactionService.updateTransaction(created.getId(), updateRequest, testUser);
+        assertEquals(ruleId, updated.getRecurrenceRuleId());
+        assertNotNull(updated.getRecurrenceRule());
+        assertEquals(RecurrenceFrequency.DAILY, updated.getRecurrenceRule().getFrequency());
+        assertEquals(2, updated.getRecurrenceRule().getInterval());
+        assertEquals(LocalDate.of(2026, 6, 2), updated.getRecurrenceRule().getStartDate());
+
+        // 2. Remove the recurrence rule by setting it to null
+        UpdateTransactionRequest updateRequestRemoveRecurrence = UpdateTransactionRequest.builder()
+                .categoryId(expenseCategory.getId())
+                .accountId(account.getId())
+                .amount(new BigDecimal("20.00"))
+                .currency("USD")
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .notes("One-off Sub")
+                .recurrenceRule(null)
+                .build();
+
+        TransactionDto nonRecurring = transactionService.updateTransaction(created.getId(), updateRequestRemoveRecurrence, testUser);
+        assertNull(nonRecurring.getRecurrenceRuleId());
+        assertNull(nonRecurring.getRecurrenceRule());
+
+        // Verify the recurrence rule was deleted from the database
+        assertFalse(recurrenceRuleRepository.findById(ruleId).isPresent());
+    }
+
+    @Test
+    public void testDeleteTransaction_CleanUpRecurrenceRule() {
+        CreateRecurrenceRuleRequest ruleRequest = CreateRecurrenceRuleRequest.builder()
+                .frequency(RecurrenceFrequency.MONTHLY)
+                .interval(1)
+                .startDate(LocalDate.of(2026, 6, 1))
+                .build();
+
+        CreateTransactionRequest txRequest = CreateTransactionRequest.builder()
+                .categoryId(expenseCategory.getId())
+                .accountId(account.getId())
+                .amount(new BigDecimal("15.00"))
+                .currency("USD")
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .notes("Netflix")
+                .recurrenceRule(ruleRequest)
+                .build();
+
+        TransactionDto created = transactionService.createTransaction(txRequest, testUser);
+        Long ruleId = created.getRecurrenceRuleId();
+        assertNotNull(ruleId);
+
+        // Delete the template transaction
+        transactionService.deleteTransaction(created.getId(), testUser);
+
+        // Verify the recurrence rule is cleaned up since no sibling transactions reference it
+        assertFalse(recurrenceRuleRepository.findById(ruleId).isPresent());
     }
 }

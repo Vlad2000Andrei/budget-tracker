@@ -204,6 +204,44 @@ public class TransactionService {
         existing.setNotes(request.getNotes());
         existing.setDate(request.getDate());
 
+        // Handle Recurrence Rule updates
+        Long currentRecurrenceRuleId = existing.getRecurrenceRuleId();
+        if (currentRecurrenceRuleId != null) {
+            if (request.getRecurrenceRule() != null) {
+                // Update existing recurrence rule
+                var ruleReq = request.getRecurrenceRule();
+                RecurrenceRule rule = recurrenceRuleRepository.findById(currentRecurrenceRuleId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Recurrence rule not found with ID: " + currentRecurrenceRuleId));
+                rule.setFrequency(ruleReq.getFrequency());
+                rule.setInterval(ruleReq.getInterval());
+                rule.setStartDate(ruleReq.getStartDate());
+                rule.setEndDate(ruleReq.getEndDate());
+                recurrenceRuleRepository.save(rule);
+            } else {
+                // Remove recurrence rule association
+                existing.setRecurrenceRuleId(null);
+                // Clean up rule if no other transactions use it
+                List<Transaction> siblings = transactionRepository.findByRecurrenceRuleId(currentRecurrenceRuleId);
+                long count = siblings.stream().filter(t -> !t.getId().equals(existing.getId())).count();
+                if (count == 0) {
+                    recurrenceRuleRepository.deleteById(currentRecurrenceRuleId);
+                }
+            }
+        } else {
+            if (request.getRecurrenceRule() != null) {
+                // Create a new recurrence rule
+                var ruleReq = request.getRecurrenceRule();
+                RecurrenceRule rule = RecurrenceRule.builder()
+                        .frequency(ruleReq.getFrequency())
+                        .interval(ruleReq.getInterval())
+                        .startDate(ruleReq.getStartDate())
+                        .endDate(ruleReq.getEndDate())
+                        .build();
+                rule = recurrenceRuleRepository.save(rule);
+                existing.setRecurrenceRuleId(rule.getId());
+            }
+        }
+
         Transaction updated = transactionRepository.save(existing);
 
         // 3. Apply the new transaction impact on the new account
@@ -245,6 +283,14 @@ public class TransactionService {
         // Reconcile savings goal if applicable
         if (existing.getType() == CategoryType.SAVINGS) {
             savingsGoalService.reconcileAllGoalsForCategory(user.getId(), existing.getCategoryId());
+        }
+
+        // Clean up orphaned recurrence rule if it was the last transaction referencing it
+        if (existing.getRecurrenceRuleId() != null) {
+            List<Transaction> remaining = transactionRepository.findByRecurrenceRuleId(existing.getRecurrenceRuleId());
+            if (remaining.isEmpty()) {
+                recurrenceRuleRepository.deleteById(existing.getRecurrenceRuleId());
+            }
         }
     }
 
