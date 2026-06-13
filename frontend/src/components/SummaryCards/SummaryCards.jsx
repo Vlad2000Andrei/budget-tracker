@@ -78,7 +78,7 @@ export default function SummaryCards() {
             <span className={styles.cashIcon} aria-label="Income">↑</span>
             <div>
               <div className={styles.cashLabel}>Income</div>
-              <div className={`${styles.cashAmount} ${styles.income}`}>{fmt(monthIncome)}</div>
+              <div className={`${styles.cashAmount} ${styles.income}`}>{fmt(monthIncome, balanceCurrency)}</div>
             </div>
           </div>
           <div className={styles.cashDivider} aria-hidden="true" />
@@ -86,14 +86,14 @@ export default function SummaryCards() {
             <span className={styles.cashIcon} aria-label="Expenses">↓</span>
             <div>
               <div className={styles.cashLabel}>Expenses</div>
-              <div className={`${styles.cashAmount} ${styles.expense}`}>{fmt(monthExpenses)}</div>
+              <div className={`${styles.cashAmount} ${styles.expense}`}>{fmt(monthExpenses, balanceCurrency)}</div>
             </div>
           </div>
         </div>
         <div className={styles.netRow}>
           <span className={styles.netLabel}>Net savings</span>
           <span className={`${styles.netAmount} ${netSavings >= 0 ? styles.positive : styles.negative}`}>
-            {netSavings >= 0 ? '+' : ''}{fmt(netSavings)}
+            {netSavings >= 0 ? '+' : ''}{fmt(netSavings, balanceCurrency)}
           </span>
         </div>
       </div>
@@ -113,7 +113,7 @@ export default function SummaryCards() {
                 <span className={`${styles.goalPct} ${b.pct >= 90 ? styles.goalPctDanger : ''}`}>{b.pct}%</span>
               </div>
               <ProgressBar pct={b.pct} variant="primary" />
-              <span className={styles.goalAmounts}>{fmt(b.spent)} / {fmt(b.limit)}</span>
+              <span className={styles.goalAmounts}>{fmt(b.spent, balanceCurrency)} / {fmt(b.limit, balanceCurrency)}</span>
             </div>
           ))}
         </div>
@@ -129,7 +129,7 @@ export default function SummaryCards() {
                 <span className={styles.goalPct}>{g.pct}%</span>
               </div>
               <ProgressBar pct={g.pct} variant="tertiary" />
-              <span className={styles.goalAmounts}>{fmt(g.current)} / {fmt(g.target)}</span>
+              <span className={styles.goalAmounts}>{fmt(g.current, balanceCurrency)} / {fmt(g.target, balanceCurrency)}</span>
             </div>
           ))}
         </div>

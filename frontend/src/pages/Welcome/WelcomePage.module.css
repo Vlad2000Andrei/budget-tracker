@@ -1,0 +1,208 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-background);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative background blobs */
+.blobA,
+.blobB {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.blobA {
+  width: 500px;
+  height: 500px;
+  background: var(--md-primary-container);
+  top: -120px;
+  left: -120px;
+  animation: drift 12s ease-in-out infinite alternate;
+}
+
+.blobB {
+  width: 400px;
+  height: 400px;
+  background: var(--md-tertiary-container);
+  bottom: -100px;
+  right: -80px;
+  animation: drift 10s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(30px, 20px) scale(1.05); }
+}
+
+/* Onboarding Card */
+.card {
+  position: relative;
+  z-index: 1;
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-dialog);
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  box-shadow: var(--md-elevation-3);
+  animation: cardIn 450ms var(--md-easing-decelerate) both;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Title & App Header */
+.welcomeIcon {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 16px;
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.title {
+  font-size: var(--md-headline-medium-size);
+  line-height: var(--md-headline-medium-height);
+  font-weight: 800;
+  color: var(--md-primary);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: var(--md-body-medium-size);
+  line-height: var(--md-body-large-height);
+  color: var(--md-on-surface-variant);
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: var(--md-outline-variant);
+  margin-bottom: 24px;
+}
+
+/* Forms & Selects */
+.form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  color: var(--md-on-surface);
+}
+
+.select {
+  padding: 14px;
+  border-radius: var(--md-shape-small);
+  border: 1px solid var(--md-outline);
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  font-size: var(--md-body-large-size);
+  transition: all var(--md-duration-short) var(--md-easing-standard);
+  width: 100%;
+  cursor: pointer;
+}
+
+.select:focus {
+  border-color: var(--md-primary);
+  box-shadow: 0 0 0 3px var(--md-primary-container);
+  outline: none;
+}
+
+.helpText {
+  font-size: var(--md-body-small-size);
+  color: var(--md-on-surface-variant);
+  line-height: 1.4;
+}
+
+/* Actions */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--md-shape-button);
+  font-weight: 600;
+  font-size: var(--md-label-large-size);
+  transition: all var(--md-duration-short) var(--md-easing-standard);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  background-color: var(--md-primary);
+  color: var(--md-on-primary);
+  box-shadow: var(--md-elevation-1);
+}
+
+.btn:hover {
+  background-color: #15665c;
+  box-shadow: var(--md-elevation-2);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Alerts */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
+  border-radius: var(--md-shape-medium);
+  padding: 12px 14px;
+  font-size: var(--md-body-small-size);
+  font-weight: 500;
+  width: 100%;
+  animation: fadeIn var(--md-duration-short) var(--md-easing-decelerate);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (max-width: 480px) {
+  .card {
+    margin: 16px;
+    padding: 36px 24px;
+  }
+}

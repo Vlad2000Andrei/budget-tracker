@@ -90,6 +90,7 @@ public class AuthControllerIntegrationTest {
         // Verify user was created
         User user = userRepository.findByGoogleSub("google-sub-abc-123")
                 .orElseThrow(() -> new AssertionError("User not found after provisioning"));
+        org.junit.jupiter.api.Assertions.assertFalse(user.isOnboarded());
         
         // Verify default categories seeded
         mockMvc.perform(get("/v1/categories")
@@ -113,7 +114,8 @@ public class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(user.getId().intValue())))
                 .andExpect(jsonPath("$.email", is("profile-user@example.com")))
-                .andExpect(jsonPath("$.defaultCurrency", is("EUR")));
+                .andExpect(jsonPath("$.defaultCurrency", is("EUR")))
+                .andExpect(jsonPath("$.isOnboarded", is(false)));
     }
 
     @Test
@@ -136,11 +138,13 @@ public class AuthControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(user.getId().intValue())))
-                .andExpect(jsonPath("$.defaultCurrency", is("RON")));
+                .andExpect(jsonPath("$.defaultCurrency", is("RON")))
+                .andExpect(jsonPath("$.isOnboarded", is(true)));
 
         // Verify persisted to DB
         User updated = userRepository.findById(user.getId()).orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals("RON", updated.getDefaultCurrency());
+        org.junit.jupiter.api.Assertions.assertTrue(updated.isOnboarded());
     }
 
     @Test

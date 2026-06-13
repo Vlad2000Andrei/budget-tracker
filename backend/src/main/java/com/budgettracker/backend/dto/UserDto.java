@@ -1,5 +1,6 @@
 package com.budgettracker.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,4 +16,7 @@ public class UserDto {
     private Long id;
     private String email;
     private String defaultCurrency;
+    
+    @JsonProperty("isOnboarded")
+    private boolean isOnboarded;
 }

@@ -21,7 +21,7 @@ export default function DashboardPage() {
       <header className={styles.pageHeader}>
         <div>
           <h1 className={styles.greeting}>{greeting()}, {firstName} 👋</h1>
-          <p className={styles.subGreeting}>Here's your financial overview.</p>
+          <p className={styles.subGreeting}>{"Here's your financial overview."}</p>
         </div>
         <time className={styles.dateStamp} dateTime={new Date().toISOString()}>
           {new Date().toLocaleDateString('en-US', {

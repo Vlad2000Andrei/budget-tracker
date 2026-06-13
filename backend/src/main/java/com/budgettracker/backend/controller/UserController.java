@@ -30,6 +30,7 @@ public class UserController {
                 .id(user.getId())
                 .email(user.getEmail())
                 .defaultCurrency(user.getDefaultCurrency())
+                .isOnboarded(user.isOnboarded())
                 .build();
         return ResponseEntity.ok(dto);
     }
@@ -37,12 +38,14 @@ public class UserController {
     @PatchMapping
     public ResponseEntity<UserDto> updateMe(@Valid @RequestBody UpdateUserRequest request, User user) {
         user.setDefaultCurrency(request.getDefaultCurrency());
+        user.setOnboarded(true);
         User updated = userRepository.save(user);
 
         UserDto dto = UserDto.builder()
                 .id(updated.getId())
                 .email(updated.getEmail())
                 .defaultCurrency(updated.getDefaultCurrency())
+                .isOnboarded(updated.isOnboarded())
                 .build();
         return ResponseEntity.ok(dto);
     }

@@ -44,6 +44,7 @@ public class UserRepository {
                     .set(USERS.EMAIL, user.getEmail())
                     .set(USERS.GOOGLE_SUB, user.getGoogleSub())
                     .set(USERS.DEFAULT_CURRENCY, user.getDefaultCurrency() != null ? user.getDefaultCurrency() : "USD")
+                    .set(USERS.IS_ONBOARDED, user.isOnboarded())
                     .set(USERS.CREATED_AT, now)
                     .set(USERS.UPDATED_AT, now)
                     .returning()
@@ -54,6 +55,7 @@ public class UserRepository {
                     .set(USERS.EMAIL, user.getEmail())
                     .set(USERS.GOOGLE_SUB, user.getGoogleSub())
                     .set(USERS.DEFAULT_CURRENCY, user.getDefaultCurrency())
+                    .set(USERS.IS_ONBOARDED, user.isOnboarded())
                     .set(USERS.UPDATED_AT, now)
                     .where(USERS.ID.eq(user.getId()))
                     .execute();
@@ -71,6 +73,7 @@ public class UserRepository {
                 .email(record.getEmail())
                 .googleSub(record.getGoogleSub())
                 .defaultCurrency(record.getDefaultCurrency())
+                .isOnboarded(record.getIsOnboarded())
                 .createdAt(record.getCreatedAt())
                 .updatedAt(record.getUpdatedAt())
                 .build();

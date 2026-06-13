@@ -233,7 +233,7 @@ export default function AddTransactionModal({ onClose }) {
           {showExchangeRate && (
             <div className={`${styles.field} ${styles.exchangeField}`}>
               <label className={styles.label} htmlFor="modal-exchange-rate">
-                Exchange Rate <span className={styles.labelHint}>(1 {form.currency} = ? USD)</span>
+                Exchange Rate <span className={styles.labelHint}>(1 {form.currency} = ? {user?.defaultCurrency || 'USD'})</span>
               </label>
               <input
                 id="modal-exchange-rate"
