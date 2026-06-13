@@ -51,12 +51,14 @@ public class TokenController {
         GoogleIdToken.Payload googlePayload = googleTokenVerifierService.verifyToken(request.getGoogleIdToken());
         String googleSub = googlePayload.getSubject();
         String email = googlePayload.getEmail();
+        String name = (String) googlePayload.get("name");
 
         User user = userRepository.findByGoogleSub(googleSub)
                 .orElseGet(() -> {
                     User newUser = userRepository.save(User.builder()
                             .email(email)
                             .googleSub(googleSub)
+                            .displayName(name)
                             .defaultCurrency("USD")
                             .build());
                     categoryService.seedDefaultDataForUser(newUser);

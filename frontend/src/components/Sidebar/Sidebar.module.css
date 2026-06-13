@@ -167,6 +167,15 @@
   overflow: hidden;
 }
 
+.userDisplayName {
+  font-size: var(--md-label-medium-size);
+  font-weight: 600;
+  color: var(--md-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .userEmail {
   font-size: var(--md-label-small-size);
   color: var(--md-on-surface-variant);
@@ -219,3 +228,10 @@
   width: 18px;
   height: 18px;
 }
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+}
+

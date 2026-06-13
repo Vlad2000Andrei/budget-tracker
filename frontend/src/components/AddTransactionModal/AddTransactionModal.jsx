@@ -106,11 +106,17 @@ export default function AddTransactionModal({ onClose, transaction }) {
 
   // Dynamically map accounts (stored as uppercase ACCOUNTS to match select element loop reference)
   const ACCOUNTS = useMemo(() => {
-    return dbAccounts.map(a => ({
-      id: a.id,
-      name: a.name,
-      type: a.type,
-    }));
+    return dbAccounts
+      .map(a => ({
+        id: a.id,
+        name: a.name,
+        type: a.type,
+      }))
+      .sort((a, b) => {
+        if (a.type === 'CHECKING' && b.type !== 'CHECKING') return -1;
+        if (a.type !== 'CHECKING' && b.type === 'CHECKING') return 1;
+        return a.name.localeCompare(b.name);
+      });
   }, [dbAccounts]);
 
   const categories = CATEGORIES_BY_TYPE[form.type] ?? [];
@@ -350,20 +356,28 @@ export default function AddTransactionModal({ onClose, transaction }) {
 
           {/* ── Account (optional) ────────────────────────────── */}
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="modal-account">
+            <span className={styles.label}>
               Account <span className={styles.labelHint}>optional</span>
-            </label>
-            <select
-              id="modal-account"
-              className={styles.select}
-              value={form.accountId}
-              onChange={(e) => set('accountId', e.target.value)}
-            >
-              <option value="">— No account —</option>
-              {ACCOUNTS.map((a) => (
-                <option key={a.id} value={a.id}>{a.name} ({a.type})</option>
-              ))}
-            </select>
+            </span>
+            <div className={styles.chips} role="group" aria-label="Account selection">
+              {ACCOUNTS.map((a) => {
+                const isSelected = form.accountId == a.id;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className={`${styles.chip} ${isSelected ? styles.chipActive : ''}`}
+                    onClick={() => set('accountId', isSelected ? '' : a.id)}
+                    aria-pressed={isSelected}
+                  >
+                    {a.type === 'CHECKING' ? '💳' : '💰'} {a.name}
+                  </button>
+                );
+              })}
+              {ACCOUNTS.length === 0 && (
+                <span className={styles.labelHint}>No accounts available</span>
+              )}
+            </div>
           </div>
 
           {/* ── Notes (collapsible) ───────────────────────────── */}
@@ -475,25 +489,26 @@ export default function AddTransactionModal({ onClose, transaction }) {
               {saveError}
             </div>
           )}
+        </div>
 
-          {/* ── Actions ───────────────────────────────────────── */}
-          <div className={styles.actions}>
-            <button className={styles.cancelBtn} onClick={onClose} disabled={saving}>
-              Cancel
-            </button>
-            <button
-              className={styles.saveBtn}
-              onClick={handleSave}
-              disabled={!canSave}
-              aria-busy={saving}
-            >
-              {saving ? (
-                <><span className={styles.spinner} aria-hidden="true" /> Saving…</>
-              ) : transaction ? 'Save Changes' : 'Save Transaction'}
-            </button>
-          </div>
+        {/* ── Actions ───────────────────────────────────────── */}
+        <div className={styles.actions}>
+          <button className={styles.cancelBtn} onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className={styles.saveBtn}
+            onClick={handleSave}
+            disabled={!canSave}
+            aria-busy={saving}
+          >
+            {saving ? (
+              <><span className={styles.spinner} aria-hidden="true" /> Saving…</>
+            ) : transaction ? 'Save Changes' : 'Save Transaction'}
+          </button>
         </div>
       </div>
     </div>
+
   );
 }

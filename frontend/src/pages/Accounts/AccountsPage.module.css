@@ -431,3 +431,31 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .container {
+    padding: 16px 8px;
+    gap: 16px;
+  }
+
+  .confirmToast {
+    padding: 16px;
+  }
+
+  .confirmActions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .confirmActions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

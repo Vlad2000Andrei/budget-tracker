@@ -6,6 +6,7 @@ import DashboardPage from './pages/Dashboard/DashboardPage';
 import GoalsPage from './pages/Goals/GoalsPage';
 import AccountsPage from './pages/Accounts/AccountsPage';
 import SettingsPage from './pages/Settings/SettingsPage';
+import CategoriesPage from './pages/Categories/CategoriesPage';
 
 import WelcomePage from './pages/Welcome/WelcomePage';
 
@@ -69,6 +70,7 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="goals" element={<GoalsPage />} />
         <Route path="accounts" element={<AccountsPage />} />
+        <Route path="categories" element={<CategoriesPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 

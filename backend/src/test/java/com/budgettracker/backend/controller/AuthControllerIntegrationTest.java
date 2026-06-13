@@ -71,6 +71,7 @@ public class AuthControllerIntegrationTest {
         GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
         payload.setSubject("google-sub-abc-123");
         payload.setEmail("new-user@example.com");
+        payload.set("name", "Google Display Name");
 
         when(googleTokenVerifierService.verifyToken("valid-google-id-token"))
                 .thenReturn(payload);
@@ -91,6 +92,7 @@ public class AuthControllerIntegrationTest {
         User user = userRepository.findByGoogleSub("google-sub-abc-123")
                 .orElseThrow(() -> new AssertionError("User not found after provisioning"));
         org.junit.jupiter.api.Assertions.assertFalse(user.isOnboarded());
+        org.junit.jupiter.api.Assertions.assertEquals("Google Display Name", user.getDisplayName());
         
         // Verify default categories seeded
         mockMvc.perform(get("/v1/categories")
@@ -105,6 +107,7 @@ public class AuthControllerIntegrationTest {
                 .email("profile-user@example.com")
                 .googleSub("google-sub-profile-555")
                 .defaultCurrency("EUR")
+                .displayName("John Doe")
                 .build());
 
         String token = jwtService.generateToken(user);
@@ -115,6 +118,7 @@ public class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.id", is(user.getId().intValue())))
                 .andExpect(jsonPath("$.email", is("profile-user@example.com")))
                 .andExpect(jsonPath("$.defaultCurrency", is("EUR")))
+                .andExpect(jsonPath("$.displayName", is("John Doe")))
                 .andExpect(jsonPath("$.isOnboarded", is(false)));
     }
 
@@ -124,12 +128,14 @@ public class AuthControllerIntegrationTest {
                 .email("patch-user@example.com")
                 .googleSub("google-sub-patch-777")
                 .defaultCurrency("USD")
+                .displayName("Old Name")
                 .build());
 
         String token = jwtService.generateToken(user);
 
         UpdateUserRequest request = UpdateUserRequest.builder()
                 .defaultCurrency("RON")
+                .displayName("New Name")
                 .build();
 
         mockMvc.perform(patch("/v1/users/me")
@@ -139,11 +145,13 @@ public class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(user.getId().intValue())))
                 .andExpect(jsonPath("$.defaultCurrency", is("RON")))
+                .andExpect(jsonPath("$.displayName", is("New Name")))
                 .andExpect(jsonPath("$.isOnboarded", is(true)));
 
         // Verify persisted to DB
         User updated = userRepository.findById(user.getId()).orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals("RON", updated.getDefaultCurrency());
+        org.junit.jupiter.api.Assertions.assertEquals("New Name", updated.getDisplayName());
         org.junit.jupiter.api.Assertions.assertTrue(updated.isOnboarded());
     }
 

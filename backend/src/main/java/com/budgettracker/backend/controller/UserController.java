@@ -30,6 +30,7 @@ public class UserController {
                 .id(user.getId())
                 .email(user.getEmail())
                 .defaultCurrency(user.getDefaultCurrency())
+                .displayName(user.getDisplayName())
                 .isOnboarded(user.isOnboarded())
                 .build();
         return ResponseEntity.ok(dto);
@@ -38,6 +39,9 @@ public class UserController {
     @PatchMapping
     public ResponseEntity<UserDto> updateMe(@Valid @RequestBody UpdateUserRequest request, User user) {
         user.setDefaultCurrency(request.getDefaultCurrency());
+        if (request.getDisplayName() != null) {
+            user.setDisplayName(request.getDisplayName().trim());
+        }
         user.setOnboarded(true);
         User updated = userRepository.save(user);
 
@@ -45,6 +49,7 @@ public class UserController {
                 .id(updated.getId())
                 .email(updated.getEmail())
                 .defaultCurrency(updated.getDefaultCurrency())
+                .displayName(updated.getDisplayName())
                 .isOnboarded(updated.isOnboarded())
                 .build();
         return ResponseEntity.ok(dto);

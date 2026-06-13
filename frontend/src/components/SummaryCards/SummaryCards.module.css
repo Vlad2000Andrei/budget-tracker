@@ -364,4 +364,23 @@
   padding: 8px 0;
 }
 
+@media (max-width: 600px) {
+  .card {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cashFlowRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .cashDivider {
+    display: none;
+  }
+}
+
+
 

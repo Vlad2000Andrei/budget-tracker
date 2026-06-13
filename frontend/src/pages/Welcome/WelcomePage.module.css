@@ -21,24 +21,43 @@
 .blobA {
   width: 500px;
   height: 500px;
-  background: var(--md-primary-container);
+  background: linear-gradient(135deg, var(--md-primary) 0%, #ff8a00 100%);
   top: -120px;
   left: -120px;
   animation: drift 12s ease-in-out infinite alternate;
 }
 
 .blobB {
-  width: 400px;
-  height: 400px;
-  background: var(--md-tertiary-container);
+  width: 450px;
+  height: 450px;
+  background: linear-gradient(135deg, var(--md-tertiary) 0%, #00c6ff 100%);
   bottom: -100px;
   right: -80px;
   animation: drift 10s ease-in-out infinite alternate-reverse;
 }
 
+.blobC {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.22;
+  pointer-events: none;
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+  top: 35%;
+  left: 20%;
+  animation: driftC 14s ease-in-out infinite alternate;
+}
+
 @keyframes drift {
   from { transform: translate(0, 0) scale(1); }
   to   { transform: translate(30px, 20px) scale(1.05); }
+}
+
+@keyframes driftC {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(-30px, 30px) scale(1.1); }
 }
 
 /* Onboarding Card */
@@ -209,10 +228,25 @@
 
 @media (max-width: 480px) {
   .card {
-    margin: 16px;
-    padding: 36px 24px;
+    margin: 12px;
+    padding: 24px 16px;
+    max-height: 96vh;
+  }
+
+  .welcomeIcon {
+    font-size: 40px;
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-size: var(--md-headline-small-size);
+  }
+
+  .localAccountRow {
+    padding: 10px 12px;
   }
 }
+
 
 /* Multi-step Wizard Styles */
 .localAccountsList {
@@ -315,3 +349,32 @@
 .btnBack:hover {
   background-color: rgba(0, 0, 0, 0.04) !important;
 }
+
+.welcomeCategoriesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 16px 0 24px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--md-surface-container-low);
+  border-radius: var(--md-shape-medium);
+  border: 1px solid var(--md-outline-variant);
+  width: 100%;
+}
+
+.welcomeCategoryChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-chip);
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface);
+  font-weight: 500;
+}
+

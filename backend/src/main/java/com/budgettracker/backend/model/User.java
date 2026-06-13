@@ -18,6 +18,7 @@ public class User {
     private String email;
     private String googleSub;
     private String defaultCurrency;
+    private String displayName;
     private boolean isOnboarded;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

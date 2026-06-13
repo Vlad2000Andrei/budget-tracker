@@ -59,6 +59,7 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
                                     .email("test@example.com")
                                     .googleSub(defaultSub)
                                     .defaultCurrency("USD")
+                                    .displayName("Mock User")
                                     .build()
                     );
                     categoryService.seedDefaultDataForUser(newUser);

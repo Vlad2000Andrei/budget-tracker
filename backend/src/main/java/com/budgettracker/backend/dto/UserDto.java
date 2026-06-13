@@ -16,6 +16,7 @@ public class UserDto {
     private Long id;
     private String email;
     private String defaultCurrency;
+    private String displayName;
     
     @JsonProperty("isOnboarded")
     private boolean isOnboarded;

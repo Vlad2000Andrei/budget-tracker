@@ -1,27 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosInstance from '../../api/axiosInstance';
+import { getCategoryIcon } from '../../api/utils';
 import styles from './WelcomePage.module.css';
 
 export default function WelcomePage() {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   
-  // Onboarding Step state: 1 = Currency, 2 = Accounts Setup
+  // Onboarding Step state: 1 = Display Name, 2 = Currency, 3 = Categories Showcase, 4 = Accounts Setup
   const [step, setStep] = useState(1);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [displayName, setDisplayName] = useState('');
+  const [categories, setCategories] = useState([]);
   
-  // Local temporary array representing accounts user added in Step 2
+  // Local temporary array representing accounts user added in Step 3
   const [localAccounts, setLocalAccounts] = useState([]);
   
-  // In-line single account form states (Step 2)
+  // In-line single account form states (Step 3)
   const [tempAccountName, setTempAccountName] = useState('Primary Checking');
   const [tempAccountType, setTempAccountType] = useState('CHECKING');
   const [tempAccountBalance, setTempAccountBalance] = useState('0.00');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Set default display name from user email on first load
+  useEffect(() => {
+    if (user && !displayName) {
+      const emailPrefix = user.email ? user.email.split('@')[0] : '';
+      const defaultName = emailPrefix ? emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1) : '';
+      setDisplayName(user.displayName || defaultName);
+    }
+  }, [user]);
+
+  // Load categories on mount to display in Step 2
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const response = await axiosInstance.get('/v1/categories');
+        setCategories(response.data);
+      } catch (err) {
+        console.error('Failed to load categories in onboarding wizard', err);
+      }
+    }
+    fetchCategories();
+  }, []);
 
   // Add account definition to local array
   const addLocalAccount = () => {
@@ -70,8 +95,8 @@ export default function WelcomePage() {
         });
       }
 
-      // 2. Patch user default currency. The backend automatically marks the user as onboarded.
-      await axiosInstance.patch('/v1/users/me', { defaultCurrency });
+      // 2. Patch user default currency and display name. The backend automatically marks the user as onboarded.
+      await axiosInstance.patch('/v1/users/me', { defaultCurrency, displayName: displayName.trim() });
       
       // 3. Refresh user context globally
       await refreshUser();
@@ -90,15 +115,57 @@ export default function WelcomePage() {
       {/* Decorative background blobs */}
       <div className={styles.blobA} aria-hidden="true" />
       <div className={styles.blobB} aria-hidden="true" />
+      <div className={styles.blobC} aria-hidden="true" />
 
       <div className={styles.card} role="main">
-        {step === 1 ? (
-          /* ──────────────── STEP 1: CURRENCY CHOICE ──────────────── */
-          <div>
-            <span className={styles.welcomeIcon} role="img" aria-label="Waving hand and coins">👋✨</span>
+        {step === 1 && (
+          /* ──────────────── STEP 1: DISPLAY NAME ──────────────── */
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span className={styles.welcomeIcon} role="img" aria-label="Waving hand and party popper">👋✨🎉</span>
             <h1 className={styles.title}>Welcome!</h1>
             <p className={styles.subtitle}>
-              {"Let's"} set up your base preferences for {user?.email || 'your account'} to get started.
+              We are so excited to have you here. What should we call you?
+            </p>
+
+            <div className={styles.divider} aria-hidden="true" />
+
+            <div className={styles.form}>
+              <div className={styles.formGroup}>
+                <label htmlFor="welcome-display-name" className={styles.label}>Your Display Name</label>
+                <input
+                  id="welcome-display-name"
+                  type="text"
+                  className={styles.input}
+                  placeholder="e.g. Alex"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className={styles.onboardingNote}>
+                💡 <strong>Tip:</strong> Don't worry, you can always change your display name later in your Account Settings.
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                disabled={!displayName.trim()}
+                className={styles.btn}
+                style={{ marginTop: '16px' }}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          /* ──────────────── STEP 2: CURRENCY CHOICE ──────────────── */
+          <div style={{ width: '100%' }}>
+            <h1 className={styles.title}>Select Currency 💳</h1>
+            <p className={styles.subtitle}>
+              Let's set your default base currency. This is the currency we will use for dashboard summaries, budgets, and savings goals.
             </p>
 
             <div className={styles.divider} aria-hidden="true" />
@@ -122,22 +189,84 @@ export default function WelcomePage() {
                   <option value="JPY">JPY (¥) — Japanese Yen</option>
                 </select>
                 <span className={styles.helpText}>
-                  This sets the primary currency for your dashboard summaries, budget checking, and savings goals.
+                  All transaction balances in other currencies will automatically convert to this base currency.
                 </span>
               </div>
 
+              <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '16px' }}>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className={`${styles.btn} ${styles.btnBack}`}
+                  style={{ flex: 1 }}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className={styles.btn}
+                  style={{ flex: 2 }}
+                >
+                  Continue to Categories
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          /* ──────────────── STEP 3: CATEGORIES SHOWCASE ──────────────── */
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+            <h1 className={styles.title}>Categories</h1>
+            <p className={styles.subtitle}>
+              We have pre-seeded several starting defaults for you, but we highly encourage you to create your own custom categories to match your unique spending habits!
+            </p>
+
+            <div className={styles.divider} aria-hidden="true" />
+
+            {/* Showcase Parent Categories */}
+            <div className={styles.welcomeCategoriesList}>
+              {categories.length === 0 ? (
+                <span className={styles.helpText}>Seeding default categories...</span>
+              ) : (
+                categories
+                  .filter(c => c.parentId === null)
+                  .map(c => (
+                    <span key={c.id} className={styles.welcomeCategoryChip}>
+                      {getCategoryIcon(c.icon)} {c.name}
+                    </span>
+                  ))
+              )}
+            </div>
+
+            <div className={styles.onboardingNote}>
+              💡 <strong>Where to find them:</strong> You can manage, rename, or add custom categories at any time in the new <strong>Categories</strong> section of the main navigation menu.
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '8px' }}>
               <button
                 type="button"
                 onClick={() => setStep(2)}
+                className={`${styles.btn} ${styles.btnBack}`}
+                style={{ flex: 1 }}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(4)}
                 className={styles.btn}
-                style={{ marginTop: '24px' }}
+                style={{ flex: 2 }}
               >
                 Continue to Accounts Setup
               </button>
             </div>
           </div>
-        ) : (
-          /* ──────────────── STEP 2: MULTIPLE ACCOUNTS ──────────────── */
+        )}
+
+        {step === 4 && (
+          /* ──────────────── STEP 4: ACCOUNTS SETUP ──────────────── */
           <div style={{ width: '100%' }}>
             <h1 className={styles.title}>Setup Accounts</h1>
             <p className={styles.subtitle}>
@@ -237,7 +366,7 @@ export default function WelcomePage() {
 
             {/* Explanatory Reminder Note */}
             <div className={styles.onboardingNote}>
-              💡 <strong>Tip:</strong> You can always manage, edit account names, or delete accounts later by visiting the <strong>Accounts</strong> tab in the sidebar.
+              💡 <strong>Tip:</strong> You can always manage, edit account names, or delete accounts later by visiting the <strong>Accounts</strong> tab in the navigation.
             </div>
 
             {error && (
@@ -253,7 +382,7 @@ export default function WelcomePage() {
             <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(3)}
                 disabled={loading}
                 className={`${styles.btn} ${styles.btnBack}`}
                 style={{ flex: 1 }}

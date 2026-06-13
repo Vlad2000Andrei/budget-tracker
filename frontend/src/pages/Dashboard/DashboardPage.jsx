@@ -13,14 +13,14 @@ export default function DashboardPage() {
     return 'Good evening';
   };
 
-  const firstName = user?.email?.split('@')[0] ?? 'there';
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'there';
 
   return (
     <div className={styles.page}>
       {/* Page header */}
       <header className={styles.pageHeader}>
         <div>
-          <h1 className={styles.greeting}>{greeting()}, {firstName} 👋</h1>
+          <h1 className={styles.greeting}>{greeting()}, {displayName} 👋</h1>
           <p className={styles.subGreeting}>{"Here's your financial overview."}</p>
         </div>
         <time className={styles.dateStamp} dateTime={new Date().toISOString()}>
