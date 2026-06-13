@@ -30,16 +30,19 @@ public class TransactionService {
     private final CategoryRepository categoryRepository;
     private final AccountRepository accountRepository;
     private final CurrencyExchangeService currencyExchangeService;
+    private final SavingsGoalService savingsGoalService;
 
     @Autowired
     public TransactionService(TransactionRepository transactionRepository,
                               CategoryRepository categoryRepository,
                               AccountRepository accountRepository,
-                              CurrencyExchangeService currencyExchangeService) {
+                              CurrencyExchangeService currencyExchangeService,
+                              SavingsGoalService savingsGoalService) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.accountRepository = accountRepository;
         this.currencyExchangeService = currencyExchangeService;
+        this.savingsGoalService = savingsGoalService;
     }
 
     public List<TransactionDto> getTransactions(User user, Long accountId, Long categoryId,
@@ -116,6 +119,11 @@ public class TransactionService {
             adjustAccountBalance(account, accountAmount, request.getType());
         }
 
+        // Reconcile savings goal if applicable
+        if (request.getType() == CategoryType.SAVINGS) {
+            savingsGoalService.reconcileAllGoalsForCategory(user.getId(), request.getCategoryId());
+        }
+
         return mapToDto(saved);
     }
 
@@ -127,6 +135,9 @@ public class TransactionService {
         if (!existing.getUserId().equals(user.getId())) {
             throw new ForbiddenActionException("You do not have permission to modify this transaction");
         }
+
+        Long oldCategoryId = existing.getCategoryId();
+        CategoryType oldType = existing.getType();
 
         // Validate Category
         Category category = categoryRepository.findById(request.getCategoryId())
@@ -179,6 +190,14 @@ public class TransactionService {
             adjustAccountBalance(newAccount, newAccountAmount, request.getType());
         }
 
+        // Reconcile savings goals if applicable
+        if (oldType == CategoryType.SAVINGS) {
+            savingsGoalService.reconcileAllGoalsForCategory(user.getId(), oldCategoryId);
+        }
+        if (request.getType() == CategoryType.SAVINGS && (oldType != CategoryType.SAVINGS || !request.getCategoryId().equals(oldCategoryId))) {
+            savingsGoalService.reconcileAllGoalsForCategory(user.getId(), request.getCategoryId());
+        }
+
         return mapToDto(updated);
     }
 
@@ -200,6 +219,11 @@ public class TransactionService {
         }
 
         transactionRepository.deleteById(transactionId);
+
+        // Reconcile savings goal if applicable
+        if (existing.getType() == CategoryType.SAVINGS) {
+            savingsGoalService.reconcileAllGoalsForCategory(user.getId(), existing.getCategoryId());
+        }
     }
 
     private void adjustAccountBalance(Account account, BigDecimal amount, CategoryType type) {

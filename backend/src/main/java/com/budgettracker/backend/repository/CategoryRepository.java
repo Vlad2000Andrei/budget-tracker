@@ -95,11 +95,11 @@ public class CategoryRepository {
         );
     }
 
-    public boolean hasDescendantTransactions(Long categoryId) {
-        if (categoryId == null) {
-            return false;
-        }
+    public List<Long> getDescendantCategoryIds(Long categoryId) {
         List<Long> descendantIds = new java.util.ArrayList<>();
+        if (categoryId == null) {
+            return descendantIds;
+        }
         descendantIds.add(categoryId);
 
         // Accumulate descendants level-by-level (BFS traversal)
@@ -114,7 +114,14 @@ public class CategoryRepository {
             }
             currentLevelIds = nextLevelIds;
         }
+        return descendantIds;
+    }
 
+    public boolean hasDescendantTransactions(Long categoryId) {
+        if (categoryId == null) {
+            return false;
+        }
+        List<Long> descendantIds = getDescendantCategoryIds(categoryId);
         return dsl.fetchExists(
                 dsl.selectOne()
                         .from(TRANSACTIONS)
