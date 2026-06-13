@@ -35,6 +35,10 @@ A complete record of every explicit design decision made during the initial desi
 | 27 | Add Transaction modal (Phase 1) | Built now; Save calls real `POST /v1/transactions` | Auth is live, so the write path can be wired immediately without extra cost |
 | 28 | Backend dev port | `19092` | Non-standard port chosen by the backend dev server |
 | 29 | Vite dev proxy | `/v1/**` proxied to `http://localhost:19092` | Eliminates CORS issues in development; frontend code calls `/v1/...` with no origin in the path |
+| 30 | Onboarding Setup | Multi-step welcome wizard (currency selection, then multiple account configurations) | Separates base preference from account creation, requiring at least one account to start with valid data while showing helpful management tips. |
+| 31 | Account Progress Bars | Per-account progress bars on the Total Balance dashboard card | Visualizes percentage weights and native currency balances of individual accounts relative to net savings/assets. |
+| 32 | LAN Exposure | Enabled `host: true` in Vite settings | Exposes the dev server across network interfaces for remote LAN devices (like phone browsers) without CORS conflicts. |
+| 33 | Dynamic Ports | Configured server ports via env vars (`FRONTEND_PORT`, `BACKEND_PORT`, or fallback standard `PORT`) | Enables flexible local development and seamless containerized deployments. |
 
 ---
 
