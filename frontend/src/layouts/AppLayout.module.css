@@ -32,22 +32,23 @@
 @media (max-width: 768px) {
   .shell {
     flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 
   .contentContainer {
-    height: 100vh;
-    overflow: hidden;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 
   .main {
     padding: 20px 16px;
     padding-top: 84px; /* 64px Top Bar + 20px padding */
     padding-bottom: 100px; /* 80px Bottom Nav + 20px padding */
-    height: 100%;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    height: auto;
+    overflow-y: visible;
   }
 
   /* Mobile Top App Bar */
