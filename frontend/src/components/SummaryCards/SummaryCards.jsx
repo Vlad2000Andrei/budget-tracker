@@ -57,7 +57,7 @@ export default function SummaryCards() {
     );
   }
 
-  const { totalBalance, balanceCurrency, monthIncome, monthExpenses, budgets, savingsGoals } = data;
+  const { totalBalance, balanceCurrency, monthIncome, monthExpenses, budgets, savingsGoals, accounts } = data;
   const netSavings = monthIncome - monthExpenses;
 
   return (
@@ -67,6 +67,23 @@ export default function SummaryCards() {
         <span className={styles.cardLabel}>Total Balance</span>
         <span className={styles.balanceAmount}>{fmt(totalBalance, balanceCurrency)}</span>
         <span className={styles.cardSub}>Across all accounts</span>
+        {accounts && accounts.length > 0 && (
+          <div className={styles.accountsProgressList}>
+            {accounts.map((acc) => (
+              <div key={acc.id} className={styles.accountProgressRow}>
+                <div className={styles.accountProgressMeta}>
+                  <span className={styles.accountNameText}>
+                    {acc.name} <span className={styles.accountPctText}>({acc.percentage}%)</span>
+                  </span>
+                  <span className={styles.accountAmtText}>{fmt(acc.balance, acc.currency)}</span>
+                </div>
+                <div className={styles.accountProgressTrack} role="progressbar" aria-valuenow={acc.percentage} aria-valuemin={0} aria-valuemax={100}>
+                  <div className={styles.accountProgressFill} style={{ width: `${Math.min(100, Math.max(0, acc.percentage))}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className={styles.balanceBadge} aria-hidden="true">💳</div>
       </div>
 

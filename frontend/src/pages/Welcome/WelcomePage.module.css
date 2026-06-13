@@ -300,17 +300,7 @@
   width: 100%;
 }
 
-.btnSecondary {
-  background-color: transparent !important;
-  color: var(--md-primary) !important;
-  border: 1px solid var(--md-primary) !important;
-  box-shadow: none !important;
-  margin-top: 0 !important;
-}
 
-.btnSecondary:hover {
-  background-color: rgba(26, 122, 110, 0.08) !important;
-}
 
 .btnBack {
   background-color: transparent !important;

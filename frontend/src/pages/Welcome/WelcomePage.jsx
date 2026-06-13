@@ -226,10 +226,10 @@ export default function WelcomePage() {
                 type="button"
                 onClick={addLocalAccount}
                 disabled={!tempAccountName.trim()}
-                className={`${styles.btn} ${styles.btnSecondary}`}
-                style={{ width: 'auto', alignSelf: 'flex-start' }}
+                className={styles.btn}
+                style={{ width: 'auto', alignSelf: 'flex-start', marginTop: 0 }}
               >
-                + Add to List
+                Save
               </button>
             </div>
 

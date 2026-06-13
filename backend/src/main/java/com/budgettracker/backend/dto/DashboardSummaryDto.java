@@ -19,6 +19,20 @@ public class DashboardSummaryDto {
     private BigDecimal monthExpenses;
     private List<BudgetSummaryDto> budgets;
     private List<SavingsGoalSummaryDto> savingsGoals;
+    private List<AccountSummaryDto> accounts;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AccountSummaryDto {
+        private Long id;
+        private String name;
+        private BigDecimal balance;
+        private String currency;
+        private BigDecimal convertedBalance;
+        private Integer percentage;
+    }
 
     @Data
     @Builder

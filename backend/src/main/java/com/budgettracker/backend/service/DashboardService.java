@@ -54,6 +54,8 @@ public class DashboardService {
         // 1. Calculate Total Balance across all accounts in user's default currency
         List<AccountDto> accounts = accountService.getAccounts(user);
         BigDecimal totalBalance = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        List<DashboardSummaryDto.AccountSummaryDto> accountSummaries = new ArrayList<>();
+
         for (AccountDto account : accounts) {
             BigDecimal converted = currencyExchangeService.convert(
                     account.getBalance(), 
@@ -61,6 +63,30 @@ public class DashboardService {
                     user.getDefaultCurrency()
             );
             totalBalance = totalBalance.add(converted);
+        }
+
+        for (AccountDto account : accounts) {
+            BigDecimal converted = currencyExchangeService.convert(
+                    account.getBalance(), 
+                    account.getCurrency(), 
+                    user.getDefaultCurrency()
+            );
+            
+            int percentage = 0;
+            if (totalBalance.compareTo(BigDecimal.ZERO) > 0) {
+                percentage = converted.multiply(new BigDecimal("100"))
+                        .divide(totalBalance, 0, RoundingMode.HALF_UP)
+                        .intValue();
+            }
+
+            accountSummaries.add(DashboardSummaryDto.AccountSummaryDto.builder()
+                    .id(account.getId())
+                    .name(account.getName())
+                    .balance(account.getBalance())
+                    .currency(account.getCurrency())
+                    .convertedBalance(converted)
+                    .percentage(percentage)
+                    .build());
         }
 
         // 2. Calculate Monthly Cash Flow (Income, Expenses) for the current month (in user's default currency)
@@ -180,6 +206,7 @@ public class DashboardService {
                 .monthExpenses(monthExpenses)
                 .budgets(budgetSummaries)
                 .savingsGoals(savingsGoalSummaries)
+                .accounts(accountSummaries)
                 .build();
     }
 }
