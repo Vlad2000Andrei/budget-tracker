@@ -9,8 +9,15 @@ export default function SettingsPage() {
   // Profile Form State
   const [defaultCurrency, setDefaultCurrency] = useState(user?.defaultCurrency || 'USD');
   const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState(null);
+
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
 
   // Sync profile values on load or when user object updates
   useEffect(() => {
@@ -103,6 +110,22 @@ export default function SettingsPage() {
                 </select>
                 <span className={styles.helpText}>
                   All balances, monthly cash flow charts, and active budgets will automatically convert to and render in this currency.
+                </span>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="theme-select" className={styles.label}>Theme Mode</label>
+                <select
+                  id="theme-select"
+                  value={theme}
+                  onChange={(e) => handleThemeChange(e.target.value)}
+                  className={styles.select}
+                >
+                  <option value="light">☀️ Light Mode</option>
+                  <option value="dark">🌙 Dark Mode</option>
+                </select>
+                <span className={styles.helpText}>
+                  Choose the visual appearance of the application.
                 </span>
               </div>
 

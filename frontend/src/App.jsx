@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import AppLayout from './layouts/AppLayout';
@@ -40,6 +41,11 @@ function ProtectedRouteWelcome({ children }) {
 
 export default function App() {
   const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    const theme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  }, []);
 
   return (
     <Routes>
