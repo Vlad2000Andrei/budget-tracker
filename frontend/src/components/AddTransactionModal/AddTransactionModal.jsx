@@ -33,6 +33,7 @@ export default function AddTransactionModal({ onClose }) {
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [savingsAction, setSavingsAction] = useState('DEPOSIT');
   const amountRef = useRef(null);
   const backdropRef = useRef(null);
 
@@ -131,7 +132,9 @@ export default function AddTransactionModal({ onClose }) {
     const payload = {
       categoryId: form.categoryId,
       accountId: form.accountId ? parseInt(form.accountId, 10) : undefined,
-      amount: parseFloat(form.amount),
+      amount: form.type === 'SAVINGS' && savingsAction === 'WITHDRAWAL'
+        ? -Math.abs(parseFloat(form.amount))
+        : Math.abs(parseFloat(form.amount)),
       currency: form.currency,
       type: form.type,
       notes: form.notes || undefined,
@@ -190,7 +193,7 @@ export default function AddTransactionModal({ onClose }) {
                 <button
                   key={t}
                   className={`${styles.typeBtn} ${form.type === t ? styles[`typeBtnActive_${t}`] : ''}`}
-                  onClick={() => { set('type', t); set('categoryId', null); setCategorySearch(''); }}
+                  onClick={() => { set('type', t); set('categoryId', null); setCategorySearch(''); setSavingsAction('DEPOSIT'); }}
                   aria-pressed={form.type === t}
                 >
                   {t === 'EXPENSE' ? '↓ Expense' : t === 'INCOME' ? '↑ Income' : '🏦 Savings'}
@@ -198,6 +201,25 @@ export default function AddTransactionModal({ onClose }) {
               ))}
             </div>
           </div>
+
+          {/* ── Savings Action Toggle (Visible only if type is SAVINGS) ── */}
+          {form.type === 'SAVINGS' && (
+            <div className={styles.field} style={{ animation: 'fadeSlide 200ms var(--md-easing-decelerate) both' }}>
+              <label className={styles.label}>Savings Action</label>
+              <div className={styles.typeToggle} role="group" aria-label="Savings action">
+                {['DEPOSIT', 'WITHDRAWAL'].map((act) => (
+                  <button
+                    key={act}
+                    className={`${styles.typeBtn} ${savingsAction === act ? styles[`typeBtnActive_${act}`] : ''}`}
+                    onClick={() => setSavingsAction(act)}
+                    aria-pressed={savingsAction === act}
+                  >
+                    {act === 'DEPOSIT' ? '🏦 Deposit' : '💸 Withdrawal'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Amount + Currency ──────────────────────────────── */}
           <div className={styles.row2}>
@@ -219,7 +241,7 @@ export default function AddTransactionModal({ onClose }) {
               <label className={styles.label} htmlFor="modal-currency">Currency</label>
               <select
                 id="modal-currency"
-                className={styles.select}
+                className={`${styles.select} ${styles.currencySelect}`}
                 value={form.currency}
                 onChange={(e) => set('currency', e.target.value)}
               >

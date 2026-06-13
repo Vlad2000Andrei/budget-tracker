@@ -64,6 +64,7 @@ public class TransactionControllerIntegrationTest {
     private User testUser;
     private User otherUser;
     private Category expenseCategory;
+    private Category savingsCategory;
     private Category otherCategory;
     private Account eurAccount;
     private Account ronAccount;
@@ -91,6 +92,12 @@ public class TransactionControllerIntegrationTest {
                 .userId(testUser.getId())
                 .name("Food")
                 .type(CategoryType.EXPENSE)
+                .build());
+
+        savingsCategory = categoryRepository.save(Category.builder()
+                .userId(testUser.getId())
+                .name("Car Savings")
+                .type(CategoryType.SAVINGS)
                 .build());
 
         otherCategory = categoryRepository.save(Category.builder()
@@ -308,5 +315,121 @@ public class TransactionControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].amount", is(10.0)));
+    }
+
+    @Test
+    public void testCreateSavingsTransactions_Balances() throws Exception {
+        // 1. Deposit positive savings amount to a SAVINGS account: Should INCREASE balance
+        CreateTransactionRequest requestDepositSavingsAcc = CreateTransactionRequest.builder()
+                .categoryId(savingsCategory.getId())
+                .accountId(ronAccount.getId())
+                .amount(new BigDecimal("100.00"))
+                .currency("RON")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDepositSavingsAcc)))
+                .andExpect(status().isCreated());
+
+        Account updatedRon = accountRepository.findById(ronAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("600.0000"), updatedRon.getBalance());
+
+        // 2. Withdraw negative savings amount from a SAVINGS account: Should DECREASE balance
+        CreateTransactionRequest requestWithdrawSavingsAcc = CreateTransactionRequest.builder()
+                .categoryId(savingsCategory.getId())
+                .accountId(ronAccount.getId())
+                .amount(new BigDecimal("-50.00"))
+                .currency("RON")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestWithdrawSavingsAcc)))
+                .andExpect(status().isCreated());
+
+        updatedRon = accountRepository.findById(ronAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("550.0000"), updatedRon.getBalance());
+
+        // 3. Deposit positive savings amount to a CHECKING account: Should DECREASE balance
+        CreateTransactionRequest requestDepositChecking = CreateTransactionRequest.builder()
+                .categoryId(savingsCategory.getId())
+                .accountId(eurAccount.getId())
+                .amount(new BigDecimal("200.00"))
+                .currency("EUR")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDepositChecking)))
+                .andExpect(status().isCreated());
+
+        Account updatedEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("800.0000"), updatedEur.getBalance());
+
+        // 4. Withdraw negative savings amount from a CHECKING account: Should INCREASE balance
+        CreateTransactionRequest requestWithdrawChecking = CreateTransactionRequest.builder()
+                .categoryId(savingsCategory.getId())
+                .accountId(eurAccount.getId())
+                .amount(new BigDecimal("-50.00"))
+                .currency("EUR")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestWithdrawChecking)))
+                .andExpect(status().isCreated());
+
+        updatedEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("850.0000"), updatedEur.getBalance());
+    }
+
+    @Test
+    public void testCreateTransaction_NegativeAmountValidation_ExpenseAndIncome() throws Exception {
+        // 1. Negative amount for EXPENSE: Should fail validation
+        CreateTransactionRequest requestExpenseNeg = CreateTransactionRequest.builder()
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .amount(new BigDecimal("-10.00"))
+                .currency("EUR")
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestExpenseNeg)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("Transaction amount must be greater than zero")));
+
+        // 2. Zero amount for SAVINGS: Should fail validation
+        CreateTransactionRequest requestSavingsZero = CreateTransactionRequest.builder()
+                .categoryId(savingsCategory.getId())
+                .accountId(eurAccount.getId())
+                .amount(BigDecimal.ZERO)
+                .currency("EUR")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestSavingsZero)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("Savings transaction amount cannot be zero")));
     }
 }

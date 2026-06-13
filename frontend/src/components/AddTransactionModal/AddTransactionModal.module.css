@@ -146,6 +146,13 @@
   padding: 12px;
   text-align: right;
   letter-spacing: -0.5px;
+  height: 58px;
+  box-sizing: border-box;
+}
+
+.currencySelect {
+  height: 58px;
+  box-sizing: border-box;
 }
 
 .amountInput::placeholder {
@@ -205,6 +212,18 @@
 .typeBtnActive_SAVINGS {
   background: var(--md-tertiary-container);
   color: var(--md-on-tertiary-container);
+  font-weight: 700;
+}
+
+.typeBtnActive_DEPOSIT {
+  background: var(--md-success-container);
+  color: var(--md-on-success-container);
+  font-weight: 700;
+}
+
+.typeBtnActive_WITHDRAWAL {
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
   font-weight: 700;
 }
 

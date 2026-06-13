@@ -23,6 +23,9 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState(null);
+  const [accountToDelete, setAccountToDelete] = useState(null);
+  const [confirmName, setConfirmName] = useState('');
+  const [confirmBalance, setConfirmBalance] = useState('');
 
   // Form input states
   const [name, setName] = useState('');
@@ -115,13 +118,19 @@ export default function AccountsPage() {
     }
   };
 
-  // Handle Delete
-  const handleDelete = async (account) => {
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete the account "${account.name}"? This will also remove any association with transactions.`
-    );
-    if (!confirmDelete) return;
+  const promptDelete = (account) => {
+    setAccountToDelete(account);
+    setConfirmName('');
+    setConfirmBalance('');
+  };
 
+  const confirmDeleteAccount = async () => {
+    if (!accountToDelete) return;
+    const account = accountToDelete;
+    
+    setAccountToDelete(null);
+    setConfirmName('');
+    setConfirmBalance('');
     setAlert(null);
     try {
       await axiosInstance.delete(`/v1/accounts/${account.id}`);
@@ -201,7 +210,7 @@ export default function AccountsPage() {
                         </button>
                         <button
                           className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                          onClick={() => handleDelete(account)}
+                          onClick={() => promptDelete(account)}
                           title="Delete Account"
                           aria-label={`Delete ${account.name}`}
                         >
@@ -334,6 +343,91 @@ export default function AccountsPage() {
           </div>
         </aside>
       </div>
+
+      {/* ── Custom Deletion Confirmation Bottom-Sheet Modal ── */}
+      {accountToDelete && (
+        <div
+          className={styles.confirmBackdrop}
+          onClick={(e) => { if (e.target === e.currentTarget) setAccountToDelete(null); }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm account deletion"
+        >
+          <div className={styles.confirmToast}>
+            <div className={styles.confirmHeader}>
+              <h3 className={styles.confirmTitle}>Delete Account</h3>
+              <button
+                className={styles.cancelEditBtn}
+                onClick={() => setAccountToDelete(null)}
+                aria-label="Cancel"
+                style={{ fontSize: '16px' }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className={styles.confirmBody}>
+              <div className={styles.confirmWarning}>
+                ⚠️ Warning: Deleting the account &quot;{accountToDelete.name}&quot; is a destructive action and cannot be undone. All linked transactions will lose their association.
+              </div>
+
+              <div className={styles.confirmForm}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="confirm-account-name" className={styles.label}>
+                    To confirm, type the account name: <strong>{accountToDelete.name}</strong>
+                  </label>
+                  <input
+                    id="confirm-account-name"
+                    type="text"
+                    className={styles.input}
+                    placeholder="Type account name..."
+                    value={confirmName}
+                    onChange={(e) => setConfirmName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label htmlFor="confirm-account-balance" className={styles.label}>
+                    Type the current balance: <strong>{parseFloat(accountToDelete.balance).toFixed(2)}</strong>
+                  </label>
+                  <input
+                    id="confirm-account-balance"
+                    type="number"
+                    step="0.01"
+                    className={styles.input}
+                    placeholder="Type balance..."
+                    value={confirmBalance}
+                    onChange={(e) => setConfirmBalance(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.confirmActions}>
+              <button
+                className={styles.cancelEditBtn}
+                onClick={() => setAccountToDelete(null)}
+                style={{ padding: '8px 16px', fontSize: '14px' }}
+              >
+                Cancel
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnDanger}`}
+                onClick={confirmDeleteAccount}
+                disabled={
+                  confirmName !== accountToDelete.name ||
+                  isNaN(parseFloat(confirmBalance)) ||
+                  parseFloat(confirmBalance) !== parseFloat(accountToDelete.balance)
+                }
+              >
+                Verify & Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

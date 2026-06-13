@@ -46,6 +46,10 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
   const category = categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦' };
   const accountName = t.accountId ? accountsMap[t.accountId] : null;
   const isIncome = t.type === 'INCOME';
+  const isSavings = t.type === 'SAVINGS';
+  const isPositiveSavings = isSavings && t.amount > 0;
+
+  const isPositive = isIncome || isPositiveSavings;
 
   // Close on Escape
   useEffect(() => {
@@ -62,7 +66,7 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
       window.dispatchEvent(new Event('transaction-added'));
       onDeleted();
       onClose();
-    } catch (err) {
+    } catch {
       setDeleteError('Failed to delete. Please try again.');
       setDeleting(false);
     }
@@ -104,8 +108,8 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
         </div>
 
         {/* Amount */}
-        <div className={`${styles.toastAmount} ${isIncome ? styles.positive : styles.negative}`}>
-          {isIncome ? '+' : '−'}{fmt(t.amount, t.currency)}
+        <div className={`${styles.toastAmount} ${isPositive ? styles.positive : styles.negative}`}>
+          {isPositive ? '+' : '−'}{fmt(t.amount, t.currency)}
         </div>
 
         {/* Details grid */}
@@ -257,6 +261,10 @@ function AllTab({ categoriesMap, accountsMap }) {
             const category = categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦' };
             const accountName = t.accountId ? accountsMap[t.accountId] : null;
             const isIncome = t.type === 'INCOME';
+            const isSavings = t.type === 'SAVINGS';
+            const isPositiveSavings = isSavings && t.amount > 0;
+
+            const isPositive = isIncome || isPositiveSavings;
 
             return (
               <button
@@ -276,8 +284,8 @@ function AllTab({ categoriesMap, accountsMap }) {
                         </span>
                       )}
                     </span>
-                    <span className={`${styles.rowAmount} ${isIncome ? styles.positive : styles.negative}`}>
-                      {isIncome ? '+' : '−'}{fmt(t.amount, t.currency)}
+                    <span className={`${styles.rowAmount} ${isPositive ? styles.positive : styles.negative}`}>
+                      {isPositive ? '+' : '−'}{fmt(t.amount, t.currency)}
                     </span>
                   </div>
                   <div className={styles.rowBottom}>
@@ -366,6 +374,10 @@ function RecurringTab() {
       {recurring.map((r) => {
         const icon = getCategoryIcon(r.categoryIcon);
         const isIncome = r.type === 'INCOME';
+        const isSavings = r.type === 'SAVINGS';
+        const isPositiveSavings = isSavings && r.amount > 0;
+
+        const isPositive = isIncome || isPositiveSavings;
 
         return (
           <div key={r.id} className={styles.row} role="listitem">
@@ -373,8 +385,8 @@ function RecurringTab() {
             <div className={styles.rowMain}>
               <div className={styles.rowTop}>
                 <span className={styles.rowCategory} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><RecurringIcon size={14} /> {r.categoryName}</span>
-                <span className={`${styles.rowAmount} ${isIncome ? styles.positive : styles.negative}`}>
-                  {isIncome ? '+' : '−'}{fmt(r.amount, r.currency)}
+                <span className={`${styles.rowAmount} ${isPositive ? styles.positive : styles.negative}`}>
+                  {isPositive ? '+' : '−'}{fmt(r.amount, r.currency)}
                 </span>
               </div>
               <div className={styles.rowBottom}>

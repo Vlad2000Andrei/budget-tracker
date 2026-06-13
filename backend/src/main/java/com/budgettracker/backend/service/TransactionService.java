@@ -7,6 +7,7 @@ import com.budgettracker.backend.dto.TransactionDto;
 import com.budgettracker.backend.dto.UpdateTransactionRequest;
 import com.budgettracker.backend.exception.ForbiddenActionException;
 import com.budgettracker.backend.exception.ResourceNotFoundException;
+import com.budgettracker.backend.jooq.enums.AccountType;
 import com.budgettracker.backend.jooq.enums.CategoryType;
 import com.budgettracker.backend.model.Account;
 import com.budgettracker.backend.model.Category;
@@ -90,6 +91,17 @@ public class TransactionService {
             throw new IllegalArgumentException("Transaction type must match category type");
         }
 
+        // Validate Amount based on Type
+        if (request.getType() == CategoryType.SAVINGS) {
+            if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) == 0) {
+                throw new IllegalArgumentException("Savings transaction amount cannot be zero");
+            }
+        } else {
+            if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Transaction amount must be greater than zero");
+            }
+        }
+
         // Validate Account if specified
         Account account = null;
         if (request.getAccountId() != null) {
@@ -170,6 +182,17 @@ public class TransactionService {
         }
         if (category.getType() != request.getType()) {
             throw new IllegalArgumentException("Transaction type must match category type");
+        }
+
+        // Validate Amount based on Type
+        if (request.getType() == CategoryType.SAVINGS) {
+            if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) == 0) {
+                throw new IllegalArgumentException("Savings transaction amount cannot be zero");
+            }
+        } else {
+            if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Transaction amount must be greater than zero");
+            }
         }
 
         // Validate Account if specified
@@ -299,8 +322,14 @@ public class TransactionService {
     private void adjustAccountBalance(Account account, BigDecimal amount, CategoryType type) {
         if (type == CategoryType.INCOME) {
             account.setBalance(account.getBalance().add(amount));
-        } else { // EXPENSE or SAVINGS
+        } else if (type == CategoryType.EXPENSE) {
             account.setBalance(account.getBalance().subtract(amount));
+        } else if (type == CategoryType.SAVINGS) {
+            if (account.getType() == AccountType.SAVINGS) {
+                account.setBalance(account.getBalance().add(amount));
+            } else {
+                account.setBalance(account.getBalance().subtract(amount));
+            }
         }
         accountRepository.save(account);
     }
@@ -308,8 +337,14 @@ public class TransactionService {
     private void reverseAccountBalance(Account account, BigDecimal amount, CategoryType type) {
         if (type == CategoryType.INCOME) {
             account.setBalance(account.getBalance().subtract(amount));
-        } else { // EXPENSE or SAVINGS
+        } else if (type == CategoryType.EXPENSE) {
             account.setBalance(account.getBalance().add(amount));
+        } else if (type == CategoryType.SAVINGS) {
+            if (account.getType() == AccountType.SAVINGS) {
+                account.setBalance(account.getBalance().subtract(amount));
+            } else {
+                account.setBalance(account.getBalance().add(amount));
+            }
         }
         accountRepository.save(account);
     }
