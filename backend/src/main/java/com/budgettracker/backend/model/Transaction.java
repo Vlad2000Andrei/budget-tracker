@@ -24,6 +24,7 @@ public class Transaction {
     private BigDecimal amount;
     private String currency;
     private BigDecimal convertedAmount;
+    private String convertedCurrency;
     private BigDecimal exchangeRate;
     private CategoryType type;
     private String notes;

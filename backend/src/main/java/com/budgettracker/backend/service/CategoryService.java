@@ -291,6 +291,7 @@ public class CategoryService {
                 .icon(category.getIcon())
                 .color(category.getColor())
                 .type(category.getType())
+                .systemWide(category.getUserId() == null)
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
                 .build();

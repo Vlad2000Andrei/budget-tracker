@@ -127,6 +127,7 @@ public class TransactionService {
                 .amount(request.getAmount())
                 .currency(request.getCurrency().toUpperCase())
                 .convertedAmount(convertedAmount)
+                .convertedCurrency(user.getDefaultCurrency())
                 .exchangeRate(exchangeRate)
                 .type(request.getType())
                 .notes(request.getNotes())
@@ -199,6 +200,7 @@ public class TransactionService {
         existing.setAmount(request.getAmount());
         existing.setCurrency(request.getCurrency().toUpperCase());
         existing.setConvertedAmount(convertedAmount);
+        existing.setConvertedCurrency(user.getDefaultCurrency());
         existing.setExchangeRate(exchangeRate);
         existing.setType(request.getType());
         existing.setNotes(request.getNotes());

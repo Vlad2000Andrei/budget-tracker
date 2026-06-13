@@ -99,15 +99,15 @@ public class SavingsGoalRepository {
                 .execute();
     }
 
-    public BigDecimal calculateAccumulatedSavings(Long userId, List<Long> categoryIds) {
+    public List<org.jooq.Record2<BigDecimal, String>> findSavingsTransactions(Long userId, List<Long> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {
-            return BigDecimal.ZERO;
+            return java.util.Collections.emptyList();
         }
-        return dsl.select(coalesce(sum(TRANSACTIONS.CONVERTED_AMOUNT), BigDecimal.ZERO))
+        return dsl.select(TRANSACTIONS.CONVERTED_AMOUNT, TRANSACTIONS.CONVERTED_CURRENCY)
                 .from(TRANSACTIONS)
                 .where(TRANSACTIONS.USER_ID.eq(userId)
                         .and(TRANSACTIONS.CATEGORY_ID.in(categoryIds)))
-                .fetchOneInto(BigDecimal.class);
+                .fetch();
     }
 
     private SavingsGoal mapRecordToSavingsGoal(SavingsGoalsRecord record) {

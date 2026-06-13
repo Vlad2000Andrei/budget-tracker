@@ -64,6 +64,19 @@ public class TransactionRepository {
     @Transactional
     public Transaction save(Transaction transaction) {
         LocalDateTime now = LocalDateTime.now();
+        
+        String convertedCurrency = transaction.getConvertedCurrency();
+        if (convertedCurrency == null) {
+            convertedCurrency = dsl.select(com.budgettracker.backend.jooq.Tables.USERS.DEFAULT_CURRENCY)
+                    .from(com.budgettracker.backend.jooq.Tables.USERS)
+                    .where(com.budgettracker.backend.jooq.Tables.USERS.ID.eq(transaction.getUserId()))
+                    .fetchOneInto(String.class);
+            if (convertedCurrency == null) {
+                convertedCurrency = "USD";
+            }
+            transaction.setConvertedCurrency(convertedCurrency);
+        }
+
         if (transaction.getId() == null) {
             TransactionsRecord record = dsl.insertInto(TRANSACTIONS)
                     .set(TRANSACTIONS.USER_ID, transaction.getUserId())
@@ -73,6 +86,7 @@ public class TransactionRepository {
                     .set(TRANSACTIONS.AMOUNT, transaction.getAmount())
                     .set(TRANSACTIONS.CURRENCY, transaction.getCurrency())
                     .set(TRANSACTIONS.CONVERTED_AMOUNT, transaction.getConvertedAmount())
+                    .set(TRANSACTIONS.CONVERTED_CURRENCY, convertedCurrency)
                     .set(TRANSACTIONS.EXCHANGE_RATE, transaction.getExchangeRate())
                     .set(TRANSACTIONS.TYPE, transaction.getType())
                     .set(TRANSACTIONS.NOTES, transaction.getNotes())
@@ -90,6 +104,7 @@ public class TransactionRepository {
                     .set(TRANSACTIONS.AMOUNT, transaction.getAmount())
                     .set(TRANSACTIONS.CURRENCY, transaction.getCurrency())
                     .set(TRANSACTIONS.CONVERTED_AMOUNT, transaction.getConvertedAmount())
+                    .set(TRANSACTIONS.CONVERTED_CURRENCY, convertedCurrency)
                     .set(TRANSACTIONS.EXCHANGE_RATE, transaction.getExchangeRate())
                     .set(TRANSACTIONS.TYPE, transaction.getType())
                     .set(TRANSACTIONS.NOTES, transaction.getNotes())
@@ -130,6 +145,7 @@ public class TransactionRepository {
                 .amount(record.getAmount())
                 .currency(record.getCurrency())
                 .convertedAmount(record.getConvertedAmount())
+                .convertedCurrency(record.getConvertedCurrency())
                 .exchangeRate(record.getExchangeRate())
                 .type(record.getType())
                 .notes(record.getNotes())

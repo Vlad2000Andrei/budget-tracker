@@ -11,6 +11,7 @@ import com.budgettracker.backend.model.SavingsGoal;
 import com.budgettracker.backend.model.User;
 import com.budgettracker.backend.repository.CategoryRepository;
 import com.budgettracker.backend.repository.SavingsGoalRepository;
+import com.budgettracker.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,11 +25,18 @@ public class SavingsGoalService {
 
     private final SavingsGoalRepository savingsGoalRepository;
     private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
+    private final CurrencyExchangeService currencyExchangeService;
 
     @Autowired
-    public SavingsGoalService(SavingsGoalRepository savingsGoalRepository, CategoryRepository categoryRepository) {
+    public SavingsGoalService(SavingsGoalRepository savingsGoalRepository, 
+                              CategoryRepository categoryRepository,
+                              UserRepository userRepository,
+                              CurrencyExchangeService currencyExchangeService) {
         this.savingsGoalRepository = savingsGoalRepository;
         this.categoryRepository = categoryRepository;
+        this.userRepository = userRepository;
+        this.currencyExchangeService = currencyExchangeService;
     }
 
     public List<SavingsGoalDto> getSavingsGoals(User user) {
@@ -55,7 +63,7 @@ public class SavingsGoalService {
 
         // Calculate initial accumulated amount
         List<Long> descendants = categoryRepository.getDescendantCategoryIds(request.getCategoryId());
-        BigDecimal initialAccumulated = savingsGoalRepository.calculateAccumulatedSavings(user.getId(), descendants);
+        BigDecimal initialAccumulated = calculateAccumulatedSavings(user, descendants);
 
         SavingsGoal goal = SavingsGoal.builder()
                 .userId(user.getId())
@@ -94,7 +102,7 @@ public class SavingsGoalService {
 
         // Recalculate accumulated amount in case category changed
         List<Long> descendants = categoryRepository.getDescendantCategoryIds(request.getCategoryId());
-        BigDecimal accumulated = savingsGoalRepository.calculateAccumulatedSavings(user.getId(), descendants);
+        BigDecimal accumulated = calculateAccumulatedSavings(user, descendants);
 
         existing.setCategoryId(request.getCategoryId());
         existing.setTargetAmount(request.getTargetAmount());
@@ -129,8 +137,12 @@ public class SavingsGoalService {
             return;
         }
 
-        List<Long> descendants = categoryRepository.getDescendantCategoryIds(categoryId);
-        BigDecimal sum = savingsGoalRepository.calculateAccumulatedSavings(userId, descendants);
+        User user = userRepository.findById(userId).orElse(null);
+        BigDecimal sum = BigDecimal.ZERO;
+        if (user != null) {
+            List<Long> descendants = categoryRepository.getDescendantCategoryIds(categoryId);
+            sum = calculateAccumulatedSavings(user, descendants);
+        }
 
         for (SavingsGoal goal : goals) {
             goal.setCurrentAmount(sum);
@@ -148,6 +160,16 @@ public class SavingsGoalService {
             currentCategoryId = (cat != null) ? cat.getParentId() : null;
             depth++;
         }
+    }
+
+    private BigDecimal calculateAccumulatedSavings(User user, List<Long> categoryIds) {
+        List<org.jooq.Record2<BigDecimal, String>> records = savingsGoalRepository.findSavingsTransactions(user.getId(), categoryIds);
+        BigDecimal sum = BigDecimal.ZERO.setScale(4, java.math.RoundingMode.HALF_UP);
+        for (var rec : records) {
+            BigDecimal converted = currencyExchangeService.convert(rec.value1(), rec.value2(), user.getDefaultCurrency());
+            sum = sum.add(converted);
+        }
+        return sum;
     }
 
     private SavingsGoalDto mapToDto(SavingsGoal goal) {

@@ -68,21 +68,32 @@ public class DashboardService {
         LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
         LocalDateTime startOfNextMonth = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
 
-        BigDecimal monthIncome = dsl.select(coalesce(sum(TRANSACTIONS.CONVERTED_AMOUNT), BigDecimal.ZERO))
-                .from(TRANSACTIONS)
-                .where(TRANSACTIONS.USER_ID.eq(user.getId())
-                        .and(TRANSACTIONS.TYPE.eq(CategoryType.INCOME))
-                        .and(TRANSACTIONS.DATE.ge(startOfMonth))
-                        .and(TRANSACTIONS.DATE.lt(startOfNextMonth)))
-                .fetchOneInto(BigDecimal.class);
+        List<org.jooq.Record3<BigDecimal, String, CategoryType>> monthlyTxs = dsl.select(
+                TRANSACTIONS.CONVERTED_AMOUNT,
+                TRANSACTIONS.CONVERTED_CURRENCY,
+                TRANSACTIONS.TYPE
+        )
+        .from(TRANSACTIONS)
+        .where(TRANSACTIONS.USER_ID.eq(user.getId())
+                .and(TRANSACTIONS.DATE.ge(startOfMonth))
+                .and(TRANSACTIONS.DATE.lt(startOfNextMonth)))
+        .fetch();
 
-        BigDecimal monthExpenses = dsl.select(coalesce(sum(TRANSACTIONS.CONVERTED_AMOUNT), BigDecimal.ZERO))
-                .from(TRANSACTIONS)
-                .where(TRANSACTIONS.USER_ID.eq(user.getId())
-                        .and(TRANSACTIONS.TYPE.eq(CategoryType.EXPENSE))
-                        .and(TRANSACTIONS.DATE.ge(startOfMonth))
-                        .and(TRANSACTIONS.DATE.lt(startOfNextMonth)))
-                .fetchOneInto(BigDecimal.class);
+        BigDecimal monthIncome = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        BigDecimal monthExpenses = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+
+        for (var rec : monthlyTxs) {
+            BigDecimal amt = rec.value1();
+            String curr = rec.value2();
+            CategoryType type = rec.value3();
+
+            BigDecimal converted = currencyExchangeService.convert(amt, curr, user.getDefaultCurrency());
+            if (type == CategoryType.INCOME) {
+                monthIncome = monthIncome.add(converted);
+            } else if (type == CategoryType.EXPENSE) {
+                monthExpenses = monthExpenses.add(converted);
+            }
+        }
 
         // 3. Budgets Progress: Fetch active budgets and compute spent vs limit
         List<Budget> budgets = budgetRepository.findByUserId(user.getId());
@@ -96,14 +107,25 @@ public class DashboardService {
                 // Get descendant category IDs to sum up spent
                 List<Long> descendants = categoryRepository.getDescendantCategoryIds(budget.getCategoryId());
                 
-                BigDecimal spent = dsl.select(coalesce(sum(TRANSACTIONS.CONVERTED_AMOUNT), BigDecimal.ZERO))
-                        .from(TRANSACTIONS)
-                        .where(TRANSACTIONS.USER_ID.eq(user.getId())
-                                .and(TRANSACTIONS.CATEGORY_ID.in(descendants))
-                                .and(TRANSACTIONS.TYPE.eq(CategoryType.EXPENSE))
-                                .and(TRANSACTIONS.DATE.ge(budget.getStartDate().atStartOfDay()))
-                                .and(TRANSACTIONS.DATE.lt(budget.getEndDate().plusDays(1).atStartOfDay())))
-                        .fetchOneInto(BigDecimal.class);
+                List<org.jooq.Record2<BigDecimal, String>> budgetTxs = dsl.select(
+                        TRANSACTIONS.CONVERTED_AMOUNT,
+                        TRANSACTIONS.CONVERTED_CURRENCY
+                )
+                .from(TRANSACTIONS)
+                .where(TRANSACTIONS.USER_ID.eq(user.getId())
+                        .and(TRANSACTIONS.CATEGORY_ID.in(descendants))
+                        .and(TRANSACTIONS.TYPE.eq(CategoryType.EXPENSE))
+                        .and(TRANSACTIONS.DATE.ge(budget.getStartDate().atStartOfDay()))
+                        .and(TRANSACTIONS.DATE.lt(budget.getEndDate().plusDays(1).atStartOfDay())))
+                .fetch();
+
+                BigDecimal spent = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+                for (var rec : budgetTxs) {
+                    BigDecimal amt = rec.value1();
+                    String curr = rec.value2();
+                    BigDecimal converted = currencyExchangeService.convert(amt, curr, user.getDefaultCurrency());
+                    spent = spent.add(converted);
+                }
 
                 int pct = 0;
                 if (budget.getAmountLimit().compareTo(BigDecimal.ZERO) > 0) {

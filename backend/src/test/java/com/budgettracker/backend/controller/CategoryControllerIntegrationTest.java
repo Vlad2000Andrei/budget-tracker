@@ -226,6 +226,7 @@ public class CategoryControllerIntegrationTest {
                 .set(TRANSACTIONS.AMOUNT, new BigDecimal("45.50"))
                 .set(TRANSACTIONS.CURRENCY, "USD")
                 .set(TRANSACTIONS.CONVERTED_AMOUNT, new BigDecimal("45.50"))
+                .set(TRANSACTIONS.CONVERTED_CURRENCY, "USD")
                 .set(TRANSACTIONS.EXCHANGE_RATE, new BigDecimal("1.00"))
                 .set(TRANSACTIONS.TYPE, CategoryType.EXPENSE)
                 .set(TRANSACTIONS.DATE, LocalDateTime.now())

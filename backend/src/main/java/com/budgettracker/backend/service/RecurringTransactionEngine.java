@@ -119,6 +119,7 @@ public class RecurringTransactionEngine {
                 .amount(template.getAmount())
                 .currency(template.getCurrency().toUpperCase())
                 .convertedAmount(convertedAmount)
+                .convertedCurrency(user.getDefaultCurrency())
                 .exchangeRate(exchangeRate)
                 .type(template.getType())
                 .notes(template.getNotes())

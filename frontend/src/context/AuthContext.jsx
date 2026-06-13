@@ -43,9 +43,18 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const userResponse = await axiosInstance.get('/v1/users/me');
+      setUser(userResponse.data);
+    } catch (err) {
+      console.error('Failed to refresh user profile:', err);
+    }
+  }, []);
+
   const value = useMemo(
-    () => ({ token, user, authError, login, logout, isAuthenticated: !!token }),
-    [token, user, authError, login, logout]
+    () => ({ token, user, authError, login, logout, refreshUser, isAuthenticated: !!token }),
+    [token, user, authError, login, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
