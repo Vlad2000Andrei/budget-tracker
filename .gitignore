@@ -1,0 +1,16 @@
+# IDE & System Files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Agentic / Gemini workspace system files
+.gemini/
+brain/
+artifacts/
