@@ -91,6 +91,7 @@ public class AccountControllerIntegrationTest {
                 .name("Savings")
                 .type(AccountType.SAVINGS)
                 .currency("EUR")
+                .initialBalance(new java.math.BigDecimal("150.50"))
                 .build();
 
         mockMvc.perform(post("/v1/accounts")
@@ -102,7 +103,7 @@ public class AccountControllerIntegrationTest {
                 .andExpect(jsonPath("$.id", notNullValue()))
                 .andExpect(jsonPath("$.name", is("Savings")))
                 .andExpect(jsonPath("$.type", is("SAVINGS")))
-                .andExpect(jsonPath("$.balance", is(0.0)))
+                .andExpect(jsonPath("$.balance", is(150.50)))
                 .andExpect(jsonPath("$.currency", is("EUR")));
     }
 

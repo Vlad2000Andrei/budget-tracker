@@ -230,23 +230,6 @@ public class CategoryService {
                 .icon("savings")
                 .build());
 
-        // Seed default Accounts
-        accountRepository.save(Account.builder()
-                .userId(user.getId())
-                .name("Primary Checking")
-                .type(AccountType.CHECKING)
-                .balance(new BigDecimal("5000.0000"))
-                .currency(user.getDefaultCurrency())
-                .build());
-
-        accountRepository.save(Account.builder()
-                .userId(user.getId())
-                .name("Savings Account")
-                .type(AccountType.SAVINGS)
-                .balance(new BigDecimal("10000.0000"))
-                .currency(user.getDefaultCurrency())
-                .build());
-
         // Seed default Budgets (active for the current calendar month)
         LocalDate today = LocalDate.now();
         LocalDate startOfMonth = today.withDayOfMonth(1);

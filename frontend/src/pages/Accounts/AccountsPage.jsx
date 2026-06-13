@@ -1,11 +1,339 @@
-import styles from '../StubPage.module.css';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import axiosInstance from '../../api/axiosInstance';
+import styles from './AccountsPage.module.css';
+
+function formatBalance(amount, currency) {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency || 'USD'} ${amount}`;
+  }
+}
 
 export default function AccountsPage() {
+  const { user } = useAuth();
+  
+  // State variables
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [alert, setAlert] = useState(null);
+
+  // Form input states
+  const [name, setName] = useState('');
+  const [type, setType] = useState('CHECKING');
+  const [currency, setCurrency] = useState(user?.defaultCurrency || 'USD');
+  const [editingAccount, setEditingAccount] = useState(null);
+  const [initialBalance, setInitialBalance] = useState('');
+
+  // Load user default currency when profile updates
+  useEffect(() => {
+    if (user?.defaultCurrency && !editingAccount) {
+      setCurrency(user.defaultCurrency);
+    }
+  }, [user, editingAccount]);
+
+  // Clear alerts automatically
+  useEffect(() => {
+    if (alert?.type === 'success') {
+      const timer = setTimeout(() => setAlert(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert]);
+
+  // Fetch accounts list
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get('/v1/accounts');
+      setAccounts(response.data);
+    } catch (err) {
+      setAlert({ type: 'error', text: err.message || 'Failed to fetch accounts.' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, [fetchAccounts]);
+
+  // Handle Form Reset
+  const resetForm = () => {
+    setEditingAccount(null);
+    setName('');
+    setType('CHECKING');
+    setCurrency(user?.defaultCurrency || 'USD');
+    setInitialBalance('');
+  };
+
+  // Switch to Edit mode
+  const startEdit = (account) => {
+    setEditingAccount(account);
+    setName(account.name);
+    setType(account.type);
+    setCurrency(account.currency);
+    setAlert(null);
+  };
+
+  // Submit Create or Update
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    setSaving(true);
+    setAlert(null);
+    try {
+      if (editingAccount) {
+        // Update Account Name
+        const payload = { name: name.trim() };
+        await axiosInstance.patch(`/v1/accounts/${editingAccount.id}`, payload);
+        setAlert({ type: 'success', text: `Account "${editingAccount.name}" renamed to "${payload.name}" successfully.` });
+      } else {
+        // Create New Account
+        const payload = {
+          name: name.trim(),
+          type,
+          currency,
+          initialBalance: initialBalance ? parseFloat(initialBalance) : undefined,
+        };
+        const response = await axiosInstance.post('/v1/accounts', payload);
+        setAlert({ type: 'success', text: `Account "${response.data.name}" created successfully.` });
+      }
+      resetForm();
+      fetchAccounts();
+      // Notify components to update summaries (balances)
+      window.dispatchEvent(new Event('transaction-added'));
+    } catch (err) {
+      setAlert({ type: 'error', text: err.message || 'Failed to save account.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle Delete
+  const handleDelete = async (account) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the account "${account.name}"? This will also remove any association with transactions.`
+    );
+    if (!confirmDelete) return;
+
+    setAlert(null);
+    try {
+      await axiosInstance.delete(`/v1/accounts/${account.id}`);
+      setAlert({ type: 'success', text: `Account "${account.name}" deleted successfully.` });
+      
+      // If the deleted account was being edited, clear form editing state
+      if (editingAccount?.id === account.id) {
+        resetForm();
+      }
+      
+      fetchAccounts();
+      window.dispatchEvent(new Event('transaction-added'));
+    } catch (err) {
+      setAlert({ type: 'error', text: err.message || 'Failed to delete account.' });
+    }
+  };
+
   return (
-    <div className={styles.page}>
-      <span className={styles.emoji}>🏦</span>
-      <h1 className={styles.title}>Accounts</h1>
-      <p className={styles.sub}>Manage your checking & savings accounts — coming soon.</p>
+    <div className={styles.container}>
+      {/* Header */}
+      <header className={styles.header}>
+        <span className={styles.headerIcon} role="img" aria-label="Bank building">🏦</span>
+        <div className={styles.headerText}>
+          <h1>Accounts</h1>
+          <p>Configure checking and savings accounts and track your current balances.</p>
+        </div>
+      </header>
+
+      {/* Main Layout Grid */}
+      <div className={styles.layout}>
+        {/* Left Column: Account cards list */}
+        <main className={styles.mainContent}>
+          {loading ? (
+            <div className={styles.emptyState}>
+              <div className="spinner" aria-hidden="true" />
+              <p>Loading accounts...</p>
+            </div>
+          ) : accounts.length === 0 ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyIcon} role="img" aria-label="Inbox empty">📭</span>
+              <p>No accounts configured yet. Use the form to add your first checking or savings account.</p>
+            </div>
+          ) : (
+            <div className={styles.accountsList}>
+              {accounts.map((account) => {
+                const isChecking = account.type === 'CHECKING';
+                return (
+                  <div
+                    key={account.id}
+                    className={`${styles.accountCard} ${isChecking ? styles.checkingAccent : styles.savingsAccent}`}
+                  >
+                    <div className={styles.cardHeader}>
+                      <span className={styles.accountName} title={account.name}>{account.name}</span>
+                      <span
+                        className={`${styles.badge} ${isChecking ? styles.checkingBadge : styles.savingsBadge}`}
+                      >
+                        {isChecking ? 'Checking' : 'Savings'}
+                      </span>
+                    </div>
+
+                    <div className={styles.balance}>
+                      {formatBalance(account.balance, account.currency)}
+                    </div>
+
+                    <div className={styles.cardFooter}>
+                      <span className={styles.currencyLabel}>{account.currency}</span>
+                      <div className={styles.actions}>
+                        <button
+                          className={styles.actionBtn}
+                          onClick={() => startEdit(account)}
+                          title="Edit Name"
+                          aria-label={`Edit ${account.name} name`}
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                          </svg>
+                        </button>
+                        <button
+                          className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                          onClick={() => handleDelete(account)}
+                          title="Delete Account"
+                          aria-label={`Delete ${account.name}`}
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true">
+                            <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </main>
+
+        {/* Right Column: Context form */}
+        <aside className={styles.sidebar}>
+          <div className={styles.card}>
+            <div className={styles.formHeader}>
+              <h2>{editingAccount ? 'Edit Account' : 'Add Account'}</h2>
+              {editingAccount && (
+                <button className={styles.cancelEditBtn} onClick={resetForm}>
+                  Cancel
+                </button>
+              )}
+            </div>
+
+            <form onSubmit={handleSubmit} className={styles.form}>
+              {/* Alert status */}
+              {alert && (
+                <div
+                  className={`${styles.alert} ${alert.type === 'success' ? styles.alertSuccess : styles.alertError}`}
+                  role="alert"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true">
+                    {alert.type === 'success' ? (
+                      <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    ) : (
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    )}
+                  </svg>
+                  <span>{alert.text}</span>
+                </div>
+              )}
+
+              {/* Name */}
+              <div className={styles.formGroup}>
+                <label htmlFor="account-name" className={styles.label}>Account Name</label>
+                <input
+                  id="account-name"
+                  type="text"
+                  placeholder="e.g. Primary Checking"
+                  maxLength={100}
+                  className={styles.input}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* Initial Balance (Create mode only) */}
+              {!editingAccount && (
+                <div className={styles.formGroup}>
+                  <label htmlFor="account-initial-balance" className={styles.label}>Initial Balance</label>
+                  <input
+                    id="account-initial-balance"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className={styles.input}
+                    value={initialBalance}
+                    onChange={(e) => setInitialBalance(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Type (Create mode only) */}
+              <div className={styles.formGroup}>
+                <label htmlFor="account-type" className={styles.label}>Account Type</label>
+                <select
+                  id="account-type"
+                  className={styles.select}
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  disabled={!!editingAccount}
+                >
+                  <option value="CHECKING">Checking Account</option>
+                  <option value="SAVINGS">Savings Account</option>
+                </select>
+                {editingAccount && (
+                  <span className={styles.helpText}>Account type cannot be modified after creation.</span>
+                )}
+              </div>
+
+              {/* Currency (Create mode only) */}
+              <div className={styles.formGroup}>
+                <label htmlFor="account-currency" className={styles.label}>Currency</label>
+                <select
+                  id="account-currency"
+                  className={styles.select}
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  disabled={!!editingAccount}
+                >
+                  <option value="USD">USD ($) — United States Dollar</option>
+                  <option value="EUR">EUR (€) — Euro</option>
+                  <option value="RON">RON (lei) — Romanian Leu</option>
+                  <option value="GBP">GBP (£) — British Pound</option>
+                  <option value="CAD">CAD ($) — Canadian Dollar</option>
+                  <option value="CHF">CHF (Fr.) — Swiss Franc</option>
+                  <option value="AUD">AUD ($) — Australian Dollar</option>
+                  <option value="JPY">JPY (¥) — Japanese Yen</option>
+                </select>
+                {editingAccount && (
+                  <span className={styles.helpText}>Account currency cannot be modified after creation.</span>
+                )}
+              </div>
+
+              {/* Save Button */}
+              <button
+                type="submit"
+                disabled={saving || !name.trim()}
+                className={`${styles.btn} ${styles.btnPrimary}`}
+              >
+                {saving ? 'Saving...' : editingAccount ? 'Save Changes' : 'Create Account'}
+              </button>
+            </form>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

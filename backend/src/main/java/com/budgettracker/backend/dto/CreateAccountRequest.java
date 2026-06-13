@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,4 +27,6 @@ public class CreateAccountRequest {
     @NotBlank(message = "Currency is required")
     @Size(min = 3, max = 3, message = "Currency must be a 3-character ISO code")
     private String currency;
+
+    private BigDecimal initialBalance;
 }

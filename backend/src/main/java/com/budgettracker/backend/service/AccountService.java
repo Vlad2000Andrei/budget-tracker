@@ -35,11 +35,15 @@ public class AccountService {
 
     @Transactional
     public AccountDto createAccount(CreateAccountRequest request, User user) {
+        BigDecimal balance = request.getInitialBalance() != null
+                ? request.getInitialBalance().setScale(4, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(4);
+
         Account account = Account.builder()
                 .userId(user.getId())
                 .name(request.getName())
                 .type(request.getType())
-                .balance(BigDecimal.ZERO.setScale(4))
+                .balance(balance)
                 .currency(request.getCurrency().toUpperCase())
                 .build();
 
