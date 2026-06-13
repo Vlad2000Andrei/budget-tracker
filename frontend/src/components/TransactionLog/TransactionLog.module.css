@@ -187,11 +187,27 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .recurTag {
   font-size: 12px;
   margin-left: 4px;
+}
+
+.recurringBadge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.recurIcon {
+  display: inline-block;
+  vertical-align: middle;
+  color: var(--md-primary);
+  flex-shrink: 0;
 }
 
 .rowAmount {
@@ -234,6 +250,36 @@
 .type_EXPENSE { background: var(--md-error-container);    color: var(--md-on-error-container); }
 .type_SAVINGS { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
 
+/* ── Row Button (clickable) ─────────────────────── */
+.rowBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  border-radius: var(--md-shape-medium);
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--md-duration-short) var(--md-easing-standard);
+}
+
+.rowBtn:hover {
+  background: var(--md-surface-container-low);
+}
+
+.rowChevron {
+  color: var(--md-outline);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--md-duration-short) var(--md-easing-standard);
+}
+
+.rowBtn:hover .rowChevron {
+  opacity: 1;
+}
+
 /* ── Row Actions (Recurring tab) ────────────────── */
 .rowActions {
   display: flex;
@@ -258,10 +304,197 @@
 }
 
 .actionBtn:hover {
-  background: var(--md-surface-container-high);
-  color: var(--md-on-surface);
+  background: var(--md-error-container);
+  color: var(--md-error);
 }
 
+/* ── Transaction Detail Toast ───────────────────── */
+.toastBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: backdropIn 200ms var(--md-easing-decelerate);
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.toast {
+  background: var(--md-surface);
+  border-radius: var(--md-shape-dialog) var(--md-shape-dialog) 0 0;
+  padding: 12px 24px 32px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: var(--md-elevation-3);
+  animation: toastIn 280ms var(--md-easing-decelerate);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@keyframes toastIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.toastHandle {
+  width: 36px;
+  height: 4px;
+  background: var(--md-outline-variant);
+  border-radius: 2px;
+  margin: 0 auto 8px;
+}
+
+.toastHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toastHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toastIcon {
+  font-size: 32px;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-surface-container);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.toastCategory {
+  font-size: var(--md-title-medium-size);
+  font-weight: 700;
+  color: var(--md-on-surface);
+  margin-bottom: 4px;
+}
+
+.toastCloseBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-on-surface-variant);
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--md-duration-short) var(--md-easing-standard);
+}
+
+.toastCloseBtn:hover {
+  background: var(--md-surface-container-high);
+}
+
+.toastAmount {
+  font-size: var(--md-headline-medium-size);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.toastDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--md-surface-container-low);
+  border-radius: var(--md-shape-medium);
+  padding: 14px 16px;
+}
+
+.toastDetailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.toastDetailLabel {
+  font-size: var(--md-label-medium-size);
+  color: var(--md-on-surface-variant);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.toastDetailValue {
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface);
+  font-weight: 500;
+  text-align: right;
+}
+
+.toastError {
+  font-size: var(--md-body-small-size);
+  color: var(--md-error);
+  background: var(--md-error-container);
+  border-radius: var(--md-shape-small);
+  padding: 10px 12px;
+}
+
+.toastActions {
+  display: flex;
+  gap: 10px;
+}
+
+.toastCancelBtn {
+  flex: 1;
+  padding: 12px;
+  border-radius: var(--md-shape-button);
+  border: 1px solid var(--md-outline);
+  background: transparent;
+  color: var(--md-on-surface-variant);
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--md-duration-short) var(--md-easing-standard);
+}
+
+.toastCancelBtn:hover {
+  background: var(--md-surface-container);
+}
+
+.toastDeleteBtn {
+  flex: 2;
+  padding: 12px;
+  border-radius: var(--md-shape-button);
+  border: none;
+  background: var(--md-error);
+  color: var(--md-on-error);
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity var(--md-duration-short) var(--md-easing-standard);
+}
+
+.toastDeleteBtn:hover {
+  opacity: 0.88;
+}
+
+.toastDeleteBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Loading / Spinner ──────────────────────────── */
 .loadingContainer {
   display: flex;
   flex-direction: column;
@@ -282,7 +515,15 @@
   animation: spin 800ms linear infinite;
 }
 
+.spinnerSmall {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-

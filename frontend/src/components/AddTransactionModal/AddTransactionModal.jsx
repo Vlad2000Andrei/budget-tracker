@@ -23,6 +23,7 @@ export default function AddTransactionModal({ onClose }) {
     makeRecurring: false,
     frequency: 'MONTHLY',
     interval: 1,
+    recurringStartDate: today(),
     endDate: '',
   });
 
@@ -141,7 +142,7 @@ export default function AddTransactionModal({ onClose }) {
       payload.recurrenceRule = {
         frequency: form.frequency,
         interval: parseInt(form.interval, 10),
-        startDate: form.date,
+        startDate: form.recurringStartDate || form.date,
         endDate: form.endDate || undefined,
       };
     }
@@ -371,7 +372,10 @@ export default function AddTransactionModal({ onClose }) {
                 style={{ transform: form.makeRecurring ? 'rotate(90deg)' : 'none', transition: 'transform 200ms' }}>
                 <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
               </svg>
-              🔁 Make Recurring <span className={styles.labelHint}>optional</span>
+              <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style={{ verticalAlign: 'middle', color: 'var(--md-primary)' }} aria-hidden="true">
+                <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+              </svg>{' '}
+              Make Recurring <span className={styles.labelHint}>optional</span>
             </button>
 
             {form.makeRecurring && (
@@ -404,6 +408,18 @@ export default function AddTransactionModal({ onClose }) {
                   </div>
                 </div>
                 <div className={styles.field}>
+                  <label className={styles.label} htmlFor="modal-recurring-start-date">
+                    Recurrence Start Date <span className={styles.labelHint}>we schedule future copies from this date — defaults to the transaction date above</span>
+                  </label>
+                  <input
+                    id="modal-recurring-start-date"
+                    type="date"
+                    className={styles.input}
+                    value={form.recurringStartDate}
+                    onChange={(e) => set('recurringStartDate', e.target.value)}
+                  />
+                </div>
+                <div className={styles.field}>
                   <label className={styles.label} htmlFor="modal-end-date">
                     End Date <span className={styles.labelHint}>optional — leave blank to repeat forever</span>
                   </label>
@@ -412,7 +428,7 @@ export default function AddTransactionModal({ onClose }) {
                     type="date"
                     className={styles.input}
                     value={form.endDate}
-                    min={form.date}
+                    min={form.recurringStartDate || form.date}
                     onChange={(e) => set('endDate', e.target.value)}
                   />
                 </div>
