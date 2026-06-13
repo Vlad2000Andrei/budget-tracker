@@ -43,8 +43,11 @@
 
   .main {
     padding: 20px 16px;
-    height: calc(100vh - 64px - 80px); /* Account for Top bar (64px) & Bottom nav (80px) */
+    padding-top: 84px; /* 64px Top Bar + 20px padding */
+    padding-bottom: 100px; /* 80px Bottom Nav + 20px padding */
+    height: 100%;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Mobile Top App Bar */
@@ -56,7 +59,10 @@
     background: var(--md-surface-container-low);
     border-bottom: 1px solid var(--md-outline-variant);
     padding: 0 16px;
-    flex-shrink: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     z-index: 100;
   }
 
@@ -209,7 +215,10 @@
     background: var(--md-surface-container);
     border-top: 1px solid var(--md-outline-variant);
     padding: 0 4px;
-    flex-shrink: 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     z-index: 100;
   }
 
