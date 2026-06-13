@@ -1,6 +1,6 @@
 # IDE & System Files
 .idea/
-.vscode/
+.vscode/*
 *.suo
 *.ntvs*
 *.njsproj
@@ -14,3 +14,8 @@ desktop.ini
 .gemini/
 brain/
 artifacts/
+
+# Environment variables — NEVER commit secrets
+.env
+.env.*
+!.env.example

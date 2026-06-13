@@ -1,0 +1,232 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 36px;
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .goalsCard {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 680px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .goalsCard {
+    grid-column: span 1;
+  }
+}
+
+/* ── Base Card ────────────────────────────────────── */
+.card {
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--md-elevation-1);
+  transition:
+    box-shadow var(--md-duration-short) var(--md-easing-standard),
+    transform var(--md-duration-short) var(--md-easing-standard);
+}
+
+.card:hover {
+  box-shadow: var(--md-elevation-2);
+  transform: translateY(-2px);
+}
+
+.cardLabel {
+  font-size: var(--md-label-medium-size);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--md-on-surface-variant);
+  margin-bottom: 4px;
+}
+
+.cardSub {
+  font-size: var(--md-body-small-size);
+  color: var(--md-outline);
+  margin-top: 4px;
+}
+
+/* ── Balance Card ─────────────────────────────────── */
+.balanceCard {
+  background: linear-gradient(135deg, var(--md-primary) 0%, #15a090 100%);
+  border-color: transparent;
+  color: var(--md-on-primary);
+}
+
+.balanceCard .cardLabel,
+.balanceCard .cardSub {
+  color: rgba(255,255,255,0.75);
+}
+
+.balanceAmount {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--md-on-primary);
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin: 4px 0;
+}
+
+.balanceBadge {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-size: 40px;
+  opacity: 0.18;
+  transform: rotate(10deg);
+  pointer-events: none;
+}
+
+/* ── Cash Flow Card ───────────────────────────────── */
+.cashFlowRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0;
+}
+
+.cashItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.cashIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--md-surface-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--md-on-surface-variant);
+  flex-shrink: 0;
+}
+
+.cashLabel {
+  font-size: var(--md-label-small-size);
+  color: var(--md-on-surface-variant);
+  font-weight: 500;
+}
+
+.cashAmount {
+  font-size: var(--md-title-medium-size);
+  font-weight: 700;
+}
+
+.cashDivider {
+  width: 1px;
+  height: 36px;
+  background: var(--md-outline-variant);
+  flex-shrink: 0;
+}
+
+.income  { color: var(--md-success); }
+.expense { color: var(--md-error); }
+
+.netRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--md-outline-variant);
+  margin-top: 4px;
+}
+
+.netLabel {
+  font-size: var(--md-label-medium-size);
+  color: var(--md-on-surface-variant);
+  font-weight: 500;
+}
+
+.netAmount {
+  font-size: var(--md-title-small-size);
+  font-weight: 700;
+}
+
+.positive { color: var(--md-success); }
+.negative { color: var(--md-error); }
+
+/* ── Goals Card ───────────────────────────────────── */
+.goalSection {
+  margin-top: 12px;
+}
+
+.goalSectionTitle {
+  font-size: var(--md-label-small-size);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--md-outline);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.goalRow {
+  margin-bottom: 10px;
+}
+
+.goalMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.goalName {
+  font-size: var(--md-body-small-size);
+  font-weight: 500;
+  color: var(--md-on-surface);
+}
+
+.goalPct {
+  font-size: var(--md-label-small-size);
+  font-weight: 700;
+  color: var(--md-primary);
+}
+
+.goalPctDanger {
+  color: var(--md-error);
+}
+
+.goalAmounts {
+  font-size: var(--md-body-small-size);
+  color: var(--md-outline);
+  display: block;
+  margin-top: 3px;
+}
+
+/* ── Progress Bar ─────────────────────────────────── */
+.progressTrack {
+  height: 6px;
+  background: var(--md-surface-container-high);
+  border-radius: var(--md-shape-full);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: var(--md-shape-full);
+  transition: width 600ms var(--md-easing-decelerate);
+}
+
+.progress_primary  { background: var(--md-primary); }
+.progress_tertiary { background: var(--md-tertiary); }
+.progressDanger    { background: var(--md-error); }

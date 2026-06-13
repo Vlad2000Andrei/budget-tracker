@@ -1,0 +1,36 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 80px; /* space above FAB */
+}
+
+/* ── Page Header ─────────────────────────────────── */
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.greeting {
+  font-size: var(--md-headline-medium-size);
+  line-height: var(--md-headline-medium-height);
+  font-weight: 800;
+  color: var(--md-on-surface);
+  letter-spacing: -0.5px;
+}
+
+.subGreeting {
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface-variant);
+  margin-top: 4px;
+}
+
+.dateStamp {
+  font-size: var(--md-body-small-size);
+  color: var(--md-outline);
+  padding-top: 6px;
+  white-space: nowrap;
+}

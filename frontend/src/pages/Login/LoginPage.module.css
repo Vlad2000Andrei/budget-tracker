@@ -1,0 +1,184 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-background);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Decorative background blobs ───────────────────── */
+.blobA,
+.blobB {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.blobA {
+  width: 500px;
+  height: 500px;
+  background: var(--md-primary-container);
+  top: -120px;
+  left: -120px;
+  animation: drift 12s ease-in-out infinite alternate;
+}
+
+.blobB {
+  width: 400px;
+  height: 400px;
+  background: var(--md-tertiary-container);
+  bottom: -100px;
+  right: -80px;
+  animation: drift 10s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(30px, 20px) scale(1.05); }
+}
+
+/* ── Card ──────────────────────────────────────────── */
+.card {
+  position: relative;
+  z-index: 1;
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-dialog);
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  box-shadow: var(--md-elevation-3);
+  animation: cardIn 400ms var(--md-easing-decelerate) both;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Logo ──────────────────────────────────────────── */
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.logoEmoji {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.appName {
+  font-size: var(--md-headline-medium-size);
+  line-height: var(--md-headline-medium-height);
+  font-weight: 800;
+  color: var(--md-primary);
+  letter-spacing: -0.5px;
+}
+
+/* ── Tagline ───────────────────────────────────────── */
+.tagline {
+  font-size: var(--md-body-medium-size);
+  line-height: var(--md-body-large-height);
+  color: var(--md-on-surface-variant);
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+/* ── Divider ───────────────────────────────────────── */
+.divider {
+  width: 100%;
+  height: 1px;
+  background: var(--md-outline-variant);
+  margin-bottom: 28px;
+}
+
+/* ── Sign-in section ───────────────────────────────── */
+.signInLabel {
+  font-size: var(--md-label-large-size);
+  font-weight: 500;
+  color: var(--md-on-surface-variant);
+  margin-bottom: 16px;
+  letter-spacing: 0.01em;
+}
+
+.gsiWrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* ── Loading ───────────────────────────────────────── */
+.loadingRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface-variant);
+  margin-bottom: 8px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--md-outline-variant);
+  border-top-color: var(--md-primary);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Error ─────────────────────────────────────────── */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
+  border-radius: var(--md-shape-medium);
+  padding: 10px 14px;
+  font-size: var(--md-body-small-size);
+  font-weight: 500;
+  width: 100%;
+  margin-bottom: 8px;
+  animation: fadeIn var(--md-duration-short) var(--md-easing-decelerate);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Disclaimer ────────────────────────────────────── */
+.disclaimer {
+  font-size: var(--md-body-small-size);
+  color: var(--md-outline);
+  text-align: center;
+  margin-top: 20px;
+  line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+  .card {
+    margin: 16px;
+    padding: 36px 24px;
+  }
+}

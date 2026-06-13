@@ -1,0 +1,70 @@
+.fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 100;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px;
+
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  border-radius: var(--md-shape-fab);
+  border: none;
+  cursor: pointer;
+
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  font-family: var(--md-font-family);
+  letter-spacing: 0.02em;
+
+  box-shadow: var(--md-elevation-3);
+  transition:
+    box-shadow var(--md-duration-short) var(--md-easing-standard),
+    background-color var(--md-duration-short) var(--md-easing-standard),
+    transform var(--md-duration-short) var(--md-easing-standard);
+  will-change: transform, box-shadow;
+}
+
+.fab:hover {
+  background: color-mix(in srgb, var(--md-primary-container) 92%, var(--md-on-primary-container) 8%);
+  box-shadow: var(--md-elevation-4);
+  transform: translateY(-2px);
+}
+
+.fab:active {
+  transform: translateY(0);
+  box-shadow: var(--md-elevation-2);
+  background: color-mix(in srgb, var(--md-primary-container) 88%, var(--md-on-primary-container) 12%);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.label {
+  white-space: nowrap;
+}
+
+/* Responsive: icon-only on narrow viewports */
+@media (max-width: 600px) {
+  .fab {
+    padding: 16px;
+    border-radius: 50%;
+  }
+  .label {
+    display: none;
+  }
+}

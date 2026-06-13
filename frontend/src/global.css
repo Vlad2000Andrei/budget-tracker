@@ -1,0 +1,253 @@
+/* ============================================================
+   Budget Tracker — Global Design System
+   Material 3 Expressive — Light Mode
+   Seed: #2A9D8F (Green/Teal)
+   ============================================================ */
+
+/* ── Reset ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--md-font-family);
+  background-color: var(--md-background);
+  color: var(--md-on-background);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* ── Color Tokens ─────────────────────────────────────────── */
+:root {
+  /* Seed (change this to retheme the entire app) */
+  --md-seed: #2A9D8F;
+
+  /* Primary */
+  --md-primary:              #1A7A6E;
+  --md-on-primary:           #FFFFFF;
+  --md-primary-container:    #A8F0E6;
+  --md-on-primary-container: #00201C;
+
+  /* Secondary */
+  --md-secondary:              #4A635F;
+  --md-on-secondary:           #FFFFFF;
+  --md-secondary-container:    #CCE8E3;
+  --md-on-secondary-container: #051F1C;
+
+  /* Tertiary */
+  --md-tertiary:              #456179;
+  --md-on-tertiary:           #FFFFFF;
+  --md-tertiary-container:    #CCE5FF;
+  --md-on-tertiary-container: #001E31;
+
+  /* Error */
+  --md-error:              #BA1A1A;
+  --md-on-error:           #FFFFFF;
+  --md-error-container:    #FFDAD6;
+  --md-on-error-container: #410002;
+
+  /* Success (custom, not M3 standard) */
+  --md-success:              #2E7D32;
+  --md-on-success:           #FFFFFF;
+  --md-success-container:    #C8E6C9;
+  --md-on-success-container: #1B5E20;
+
+  /* Warning (custom) */
+  --md-warning:              #E65100;
+  --md-on-warning:           #FFFFFF;
+  --md-warning-container:    #FFE0B2;
+  --md-on-warning-container: #BF360C;
+
+  /* Surface */
+  --md-surface:            #F4FBF9;
+  --md-on-surface:         #161D1C;
+  --md-surface-variant:    #DAE5E2;
+  --md-on-surface-variant: #3F4947;
+  --md-surface-container:        #EAF1EF;
+  --md-surface-container-low:    #F0F7F5;
+  --md-surface-container-high:   #E4EDEB;
+  --md-surface-container-highest:#DEE8E6;
+  --md-outline:            #6F7978;
+  --md-outline-variant:    #BEC9C7;
+
+  /* Background */
+  --md-background:    #F4FBF9;
+  --md-on-background: #161D1C;
+
+  /* Inverse */
+  --md-inverse-surface:    #2B3230;
+  --md-inverse-on-surface: #ECF2F0;
+  --md-inverse-primary:    #8CD4CA;
+
+  /* Scrim & shadow */
+  --md-scrim:  rgba(0, 0, 0, 0.32);
+  --md-shadow: rgba(0, 0, 0, 0.12);
+}
+
+/* ── Typography Tokens ───────────────────────────────────── */
+:root {
+  --md-font-family: 'Roboto Flex', 'Roboto', sans-serif;
+
+  /* Display */
+  --md-display-large-size:   57px;
+  --md-display-large-height: 64px;
+  --md-display-medium-size:  45px;
+  --md-display-medium-height:52px;
+  --md-display-small-size:   36px;
+  --md-display-small-height: 44px;
+
+  /* Headline */
+  --md-headline-large-size:   32px;
+  --md-headline-large-height: 40px;
+  --md-headline-medium-size:  28px;
+  --md-headline-medium-height:36px;
+  --md-headline-small-size:   24px;
+  --md-headline-small-height: 32px;
+
+  /* Title */
+  --md-title-large-size:   22px;
+  --md-title-large-height: 28px;
+  --md-title-medium-size:  16px;
+  --md-title-medium-height:24px;
+  --md-title-small-size:   14px;
+  --md-title-small-height: 20px;
+
+  /* Body */
+  --md-body-large-size:   16px;
+  --md-body-large-height: 24px;
+  --md-body-medium-size:  14px;
+  --md-body-medium-height:20px;
+  --md-body-small-size:   12px;
+  --md-body-small-height: 16px;
+
+  /* Label */
+  --md-label-large-size:   14px;
+  --md-label-large-height: 20px;
+  --md-label-medium-size:  12px;
+  --md-label-medium-height:16px;
+  --md-label-small-size:   11px;
+  --md-label-small-height: 16px;
+}
+
+/* ── Shape Tokens ────────────────────────────────────────── */
+:root {
+  --md-shape-none:        0px;
+  --md-shape-extra-small: 4px;
+  --md-shape-small:       8px;
+  --md-shape-medium:      12px;
+  --md-shape-large:       16px;
+  --md-shape-extra-large: 28px;
+  --md-shape-full:        9999px;
+
+  /* Per-element shape */
+  --md-shape-fab:           var(--md-shape-full);
+  --md-shape-button:        var(--md-shape-full);
+  --md-shape-chip:          var(--md-shape-full);
+  --md-shape-card:          var(--md-shape-large);
+  --md-shape-dialog:        var(--md-shape-extra-large);
+  --md-shape-bottom-sheet:  28px;
+  --md-shape-input:         var(--md-shape-extra-small);
+  --md-shape-nav-indicator: var(--md-shape-full);
+}
+
+/* ── Motion Tokens ───────────────────────────────────────── */
+:root {
+  --md-easing-standard:    cubic-bezier(0.2, 0, 0, 1.0);
+  --md-easing-decelerate:  cubic-bezier(0, 0, 0, 1);
+  --md-easing-accelerate:  cubic-bezier(0.3, 0, 1, 1);
+  --md-easing-emphasized:  cubic-bezier(0.2, 0, 0, 1);
+
+  --md-duration-short:   200ms;
+  --md-duration-medium:  300ms;
+  --md-duration-long:    400ms;
+  --md-duration-sheet:   350ms;
+}
+
+/* ── Elevation / Shadow Levels ───────────────────────────── */
+:root {
+  --md-elevation-1: 0 1px 2px rgba(0,0,0,0.10), 0 1px 3px 1px rgba(0,0,0,0.08);
+  --md-elevation-2: 0 1px 2px rgba(0,0,0,0.12), 0 2px 6px 2px rgba(0,0,0,0.08);
+  --md-elevation-3: 0 4px 8px 3px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.12);
+  --md-elevation-4: 0 6px 10px 4px rgba(0,0,0,0.08), 0 2px 3px rgba(0,0,0,0.12);
+  --md-elevation-5: 0 8px 12px 6px rgba(0,0,0,0.08), 0 4px 4px rgba(0,0,0,0.12);
+}
+
+/* ── State Layer Opacities ───────────────────────────────── */
+:root {
+  --md-state-hover:   0.08;
+  --md-state-focus:   0.12;
+  --md-state-press:   0.12;
+  --md-state-drag:    0.16;
+}
+
+/* ── Scrollbar styling ───────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--md-outline-variant);
+  border-radius: var(--md-shape-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--md-outline);
+}
+
+/* ── Focus ring ──────────────────────────────────────────── */
+:focus-visible {
+  outline: 3px solid var(--md-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Selection ───────────────────────────────────────────── */
+::selection {
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+}
