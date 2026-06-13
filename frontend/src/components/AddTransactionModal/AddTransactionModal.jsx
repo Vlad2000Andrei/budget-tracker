@@ -9,31 +9,33 @@ const FREQ_LABELS = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEAR
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export default function AddTransactionModal({ onClose }) {
+export default function AddTransactionModal({ onClose, transaction }) {
   const { user } = useAuth();
   const [form, setForm] = useState({
-    type: 'EXPENSE',
-    amount: '',
-    currency: user?.defaultCurrency || 'USD',
-    exchangeRate: '',
-    categoryId: null,
-    date: today(),
-    accountId: '',
-    notes: '',
-    makeRecurring: false,
-    frequency: 'MONTHLY',
-    interval: 1,
-    recurringStartDate: today(),
-    endDate: '',
+    type: transaction?.type || 'EXPENSE',
+    amount: transaction ? Math.abs(transaction.amount).toString() : '',
+    currency: transaction?.currency || user?.defaultCurrency || 'USD',
+    exchangeRate: transaction?.exchangeRate || '',
+    categoryId: transaction?.categoryId || null,
+    date: transaction?.date ? transaction.date.split('T')[0] : today(),
+    accountId: transaction?.accountId || '',
+    notes: transaction?.notes || '',
+    makeRecurring: !!transaction?.recurrenceRule,
+    frequency: transaction?.recurrenceRule?.frequency || 'MONTHLY',
+    interval: transaction?.recurrenceRule?.interval || 1,
+    recurringStartDate: transaction?.recurrenceRule?.startDate || today(),
+    endDate: transaction?.recurrenceRule?.endDate || '',
   });
 
   const [dbCategories, setDbCategories] = useState([]);
   const [dbAccounts, setDbAccounts] = useState([]);
   const [categorySearch, setCategorySearch] = useState('');
-  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(!!transaction?.notes);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
-  const [savingsAction, setSavingsAction] = useState('DEPOSIT');
+  const [savingsAction, setSavingsAction] = useState(
+    transaction?.type === 'SAVINGS' && transaction.amount < 0 ? 'WITHDRAWAL' : 'DEPOSIT'
+  );
   const amountRef = useRef(null);
   const backdropRef = useRef(null);
 
@@ -56,10 +58,10 @@ export default function AddTransactionModal({ onClose }) {
 
   // Update default currency when user info becomes available
   useEffect(() => {
-    if (user?.defaultCurrency) {
+    if (user?.defaultCurrency && !transaction) {
       setForm(f => ({ ...f, currency: user.defaultCurrency }));
     }
-  }, [user]);
+  }, [user, transaction]);
 
   // Auto-focus amount on open
   useEffect(() => {
@@ -151,7 +153,11 @@ export default function AddTransactionModal({ onClose }) {
     }
 
     try {
-      await axiosInstance.post('/v1/transactions', payload);
+      if (transaction) {
+        await axiosInstance.patch(`/v1/transactions/${transaction.id}`, payload);
+      } else {
+        await axiosInstance.post('/v1/transactions', payload);
+      }
       window.dispatchEvent(new Event('transaction-added'));
       onClose();
     } catch (err) {
@@ -178,7 +184,9 @@ export default function AddTransactionModal({ onClose }) {
         <div className={styles.content}>
           {/* Title + close */}
           <div className={styles.sheetHeader}>
-            <h2 className={styles.sheetTitle}>Add Transaction</h2>
+            <h2 className={styles.sheetTitle}>
+              {transaction ? 'Edit Transaction' : 'Add Transaction'}
+            </h2>
             <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
               <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
                 <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
@@ -481,7 +489,7 @@ export default function AddTransactionModal({ onClose }) {
             >
               {saving ? (
                 <><span className={styles.spinner} aria-hidden="true" /> Saving…</>
-              ) : 'Save Transaction'}
+              ) : transaction ? 'Save Changes' : 'Save Transaction'}
             </button>
           </div>
         </div>

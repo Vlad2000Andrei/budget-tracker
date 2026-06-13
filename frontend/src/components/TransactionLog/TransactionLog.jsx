@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 import { getCategoryIcon } from '../../api/utils';
+import { useAuth } from '../../context/AuthContext';
+import AddTransactionModal from '../AddTransactionModal/AddTransactionModal';
 import styles from './TransactionLog.module.css';
 
 const TYPE_FILTER_OPTIONS = ['All', 'INCOME', 'EXPENSE', 'SAVINGS'];
@@ -38,7 +40,10 @@ function RecurringIcon({ size = 13 }) {
 }
 
 /* ── Transaction Detail Toast ──────────────────────────────────── */
-function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose, onDeleted }) {
+function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose, onDeleted, onEdit }) {
+  const { user } = useAuth();
+  const defaultCurrency = user?.defaultCurrency || 'USD';
+  const isMultiCurrency = t.currency && t.currency !== defaultCurrency;
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const backdropRef = useRef(null);
@@ -108,8 +113,15 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
         </div>
 
         {/* Amount */}
-        <div className={`${styles.toastAmount} ${isPositive ? styles.positive : styles.negative}`}>
-          {isPositive ? '+' : '−'}{fmt(t.amount, t.currency)}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <div className={`${styles.toastAmount} ${isPositive ? styles.positive : styles.negative}`}>
+            {isPositive ? '+' : '−'}{fmt(isMultiCurrency ? t.convertedAmount : t.amount, isMultiCurrency ? defaultCurrency : t.currency)}
+          </div>
+          {isMultiCurrency && (
+            <div style={{ fontSize: '14px', color: 'var(--md-outline)', fontWeight: '500' }}>
+              {isPositive ? '+' : '−'}{fmt(t.amount, t.currency)}
+            </div>
+          )}
         </div>
 
         {/* Details grid */}
@@ -154,6 +166,16 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
             Close
           </button>
           <button
+            className={styles.toastEditBtn}
+            onClick={onEdit}
+            disabled={deleting}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+            Edit
+          </button>
+          <button
             className={styles.toastDeleteBtn}
             onClick={handleDelete}
             disabled={deleting}
@@ -166,7 +188,7 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
                 <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                   <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                 </svg>
-                Delete Transaction
+                Delete
               </>
             )}
           </button>
@@ -178,11 +200,14 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
 
 /* ── All Transactions Tab ──────────────────────────────────────── */
 function AllTab({ categoriesMap, accountsMap }) {
+  const { user } = useAuth();
+  const defaultCurrency = user?.defaultCurrency || 'USD';
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedTx, setSelectedTx] = useState(null);
+  const [editingTx, setEditingTx] = useState(null);
 
   const loadTransactions = useCallback(async () => {
     try {
@@ -265,6 +290,7 @@ function AllTab({ categoriesMap, accountsMap }) {
             const isPositiveSavings = isSavings && t.amount > 0;
 
             const isPositive = isIncome || isPositiveSavings;
+            const isMultiCurrency = t.currency && t.currency !== defaultCurrency;
 
             return (
               <button
@@ -284,9 +310,16 @@ function AllTab({ categoriesMap, accountsMap }) {
                         </span>
                       )}
                     </span>
-                    <span className={`${styles.rowAmount} ${isPositive ? styles.positive : styles.negative}`}>
-                      {isPositive ? '+' : '−'}{fmt(t.amount, t.currency)}
-                    </span>
+                    <div className={styles.amountCol}>
+                      <span className={`${styles.rowAmount} ${isPositive ? styles.positive : styles.negative}`}>
+                        {isPositive ? '+' : '−'}{fmt(isMultiCurrency ? t.convertedAmount : t.amount, isMultiCurrency ? defaultCurrency : t.currency)}
+                      </span>
+                      {isMultiCurrency && (
+                        <span className={styles.rowAmountSub}>
+                          {isPositive ? '+' : '−'}{fmt(t.amount, t.currency)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className={styles.rowBottom}>
                     <TypeBadge type={t.type} />
@@ -311,6 +344,17 @@ function AllTab({ categoriesMap, accountsMap }) {
           accountsMap={accountsMap}
           onClose={() => setSelectedTx(null)}
           onDeleted={loadTransactions}
+          onEdit={() => {
+            setEditingTx(selectedTx);
+            setSelectedTx(null);
+          }}
+        />
+      )}
+
+      {editingTx && (
+        <AddTransactionModal
+          transaction={editingTx}
+          onClose={() => setEditingTx(null)}
         />
       )}
     </>

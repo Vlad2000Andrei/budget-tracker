@@ -174,7 +174,7 @@
 
 .rowTop {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 4px;
@@ -214,6 +214,19 @@
   font-size: var(--md-title-small-size);
   font-weight: 700;
   flex-shrink: 0;
+}
+
+.amountCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.rowAmountSub {
+  font-size: var(--md-label-small-size);
+  color: var(--md-outline);
+  margin-top: 2px;
 }
 
 .positive { color: var(--md-success); }
@@ -490,6 +503,32 @@
 }
 
 .toastDeleteBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toastEditBtn {
+  flex: 2;
+  padding: 12px;
+  border-radius: var(--md-shape-button);
+  border: none;
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity var(--md-duration-short) var(--md-easing-standard);
+}
+
+.toastEditBtn:hover {
+  opacity: 0.88;
+}
+
+.toastEditBtn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
