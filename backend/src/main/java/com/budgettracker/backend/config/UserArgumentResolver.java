@@ -3,6 +3,8 @@ package com.budgettracker.backend.config;
 import com.budgettracker.backend.model.User;
 import com.budgettracker.backend.repository.UserRepository;
 import org.springframework.core.MethodParameter;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -27,6 +29,13 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
                                   NativeWebRequest webRequest,
                                   WebDataBinderFactory binderFactory) throws Exception {
         
+        // 1. Resolve via Spring Security context if authenticated
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof User) {
+            return (User) authentication.getPrincipal();
+        }
+
+        // 2. Fallback for backwards compatibility / local dev / integration testing
         String userIdHeader = webRequest.getHeader("X-User-Id");
         if (userIdHeader != null && !userIdHeader.isBlank()) {
             try {
