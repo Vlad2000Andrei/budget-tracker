@@ -37,6 +37,7 @@ public class TransactionService {
     private final CurrencyExchangeService currencyExchangeService;
     private final SavingsGoalService savingsGoalService;
     private final RecurrenceRuleRepository recurrenceRuleRepository;
+    private final RecurringTransactionEngine recurringTransactionEngine;
 
     @Autowired
     public TransactionService(TransactionRepository transactionRepository,
@@ -44,13 +45,15 @@ public class TransactionService {
                               AccountRepository accountRepository,
                               CurrencyExchangeService currencyExchangeService,
                               SavingsGoalService savingsGoalService,
-                              RecurrenceRuleRepository recurrenceRuleRepository) {
+                              RecurrenceRuleRepository recurrenceRuleRepository,
+                              RecurringTransactionEngine recurringTransactionEngine) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.accountRepository = accountRepository;
         this.currencyExchangeService = currencyExchangeService;
         this.savingsGoalService = savingsGoalService;
         this.recurrenceRuleRepository = recurrenceRuleRepository;
+        this.recurringTransactionEngine = recurringTransactionEngine;
     }
 
     public List<TransactionDto> getTransactions(User user, Long accountId, Long categoryId,
@@ -118,9 +121,10 @@ public class TransactionService {
 
         // Save Recurrence Rule if applicable
         Long recurrenceRuleId = null;
+        RecurrenceRule rule = null;
         if (request.getRecurrenceRule() != null) {
             var ruleReq = request.getRecurrenceRule();
-            RecurrenceRule rule = RecurrenceRule.builder()
+            rule = RecurrenceRule.builder()
                     .frequency(ruleReq.getFrequency())
                     .interval(ruleReq.getInterval())
                     .startDate(ruleReq.getStartDate())
@@ -157,6 +161,10 @@ public class TransactionService {
         // Reconcile savings goal if applicable
         if (request.getType() == CategoryType.SAVINGS) {
             savingsGoalService.reconcileAllGoalsForCategory(user.getId(), request.getCategoryId());
+        }
+
+        if (rule != null) {
+            recurringTransactionEngine.processRule(rule, LocalDate.now());
         }
 
         return mapToDto(saved);
@@ -245,12 +253,7 @@ public class TransactionService {
             } else {
                 // Remove recurrence rule association
                 existing.setRecurrenceRuleId(null);
-                // Clean up rule if no other transactions use it
-                List<Transaction> siblings = transactionRepository.findByRecurrenceRuleId(currentRecurrenceRuleId);
-                long count = siblings.stream().filter(t -> !t.getId().equals(existing.getId())).count();
-                if (count == 0) {
-                    recurrenceRuleRepository.deleteById(currentRecurrenceRuleId);
-                }
+                recurrenceRuleRepository.deleteById(currentRecurrenceRuleId);
             }
         } else {
             if (request.getRecurrenceRule() != null) {
@@ -283,39 +286,86 @@ public class TransactionService {
             savingsGoalService.reconcileAllGoalsForCategory(user.getId(), request.getCategoryId());
         }
 
+        if (updated.getRecurrenceRuleId() != null && request.getRecurrenceRule() != null) {
+            RecurrenceRule rule = recurrenceRuleRepository.findById(updated.getRecurrenceRuleId()).orElse(null);
+            if (rule != null) {
+                recurringTransactionEngine.processRule(rule, LocalDate.now());
+            }
+        }
+
         return mapToDto(updated);
     }
 
     @Transactional
-    public void deleteTransaction(Long transactionId, User user) {
+    public void deleteTransaction(Long transactionId, String mode, User user) {
         Transaction existing = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID: " + transactionId));
         if (!existing.getUserId().equals(user.getId())) {
             throw new ForbiddenActionException("You do not have permission to delete this transaction");
         }
 
-        // Reverse the transaction impact on the account
-        if (existing.getAccountId() != null) {
-            Account account = accountRepository.findById(existing.getAccountId()).orElse(null);
+        Long recurrenceRuleId = existing.getRecurrenceRuleId();
+        if (recurrenceRuleId == null || "THIS_ONLY".equalsIgnoreCase(mode)) {
+            // Delete just this occurrence
+            deleteSingleTransactionInternal(existing);
+
+            // Clean up rule if no other transactions reference it
+            if (recurrenceRuleId != null) {
+                List<Transaction> remaining = transactionRepository.findByRecurrenceRuleId(recurrenceRuleId);
+                if (remaining.isEmpty()) {
+                    recurrenceRuleRepository.deleteById(recurrenceRuleId);
+                }
+            }
+        } else if ("ALL".equalsIgnoreCase(mode)) {
+            // Delete all occurrences
+            List<Transaction> siblings = transactionRepository.findByRecurrenceRuleId(recurrenceRuleId);
+            for (Transaction tx : siblings) {
+                deleteSingleTransactionInternal(tx);
+            }
+            recurrenceRuleRepository.deleteById(recurrenceRuleId);
+        } else if ("FUTURE".equalsIgnoreCase(mode)) {
+            // Delete this and future occurrences
+            List<Transaction> siblings = transactionRepository.findByRecurrenceRuleId(recurrenceRuleId);
+            LocalDateTime targetDate = existing.getDate();
+
+            for (Transaction tx : siblings) {
+                if (!tx.getDate().isBefore(targetDate)) {
+                    deleteSingleTransactionInternal(tx);
+                }
+            }
+
+            // End the recurrence rule on the day before the deleted occurrence
+            RecurrenceRule rule = recurrenceRuleRepository.findById(recurrenceRuleId).orElse(null);
+            if (rule != null) {
+                LocalDate newEndDate = targetDate.toLocalDate().minusDays(1);
+                if (newEndDate.isBefore(rule.getStartDate())) {
+                    // If the new end date is before the start date, delete the rule if no other transactions remain
+                    List<Transaction> remaining = transactionRepository.findByRecurrenceRuleId(recurrenceRuleId);
+                    if (remaining.isEmpty()) {
+                        recurrenceRuleRepository.deleteById(recurrenceRuleId);
+                    } else {
+                        rule.setEndDate(rule.getStartDate());
+                        recurrenceRuleRepository.save(rule);
+                    }
+                } else {
+                    rule.setEndDate(newEndDate);
+                    recurrenceRuleRepository.save(rule);
+                }
+            }
+        }
+    }
+
+    private void deleteSingleTransactionInternal(Transaction tx) {
+        if (tx.getAccountId() != null) {
+            Account account = accountRepository.findById(tx.getAccountId()).orElse(null);
             if (account != null) {
-                BigDecimal accountAmount = currencyExchangeService.convert(existing.getAmount(), existing.getCurrency(), account.getCurrency());
-                reverseAccountBalance(account, accountAmount, existing.getType());
+                BigDecimal accountAmount = currencyExchangeService.convert(tx.getAmount(), tx.getCurrency(), account.getCurrency());
+                reverseAccountBalance(account, accountAmount, tx.getType());
             }
         }
-
-        transactionRepository.deleteById(transactionId);
-
-        // Reconcile savings goal if applicable
-        if (existing.getType() == CategoryType.SAVINGS) {
-            savingsGoalService.reconcileAllGoalsForCategory(user.getId(), existing.getCategoryId());
-        }
-
-        // Clean up orphaned recurrence rule if it was the last transaction referencing it
-        if (existing.getRecurrenceRuleId() != null) {
-            List<Transaction> remaining = transactionRepository.findByRecurrenceRuleId(existing.getRecurrenceRuleId());
-            if (remaining.isEmpty()) {
-                recurrenceRuleRepository.deleteById(existing.getRecurrenceRuleId());
-            }
+        transactionRepository.deleteById(tx.getId());
+        if (tx.getType() == CategoryType.SAVINGS) {
+            savingsGoalService.reconcileAllGoalsForCategory(tx.getUserId(), tx.getCategoryId());
         }
     }
 

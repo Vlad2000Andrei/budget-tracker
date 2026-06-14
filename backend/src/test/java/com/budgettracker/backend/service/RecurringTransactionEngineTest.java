@@ -266,7 +266,7 @@ public class RecurringTransactionEngineTest {
         assertNotNull(ruleId);
 
         // Delete the template transaction
-        transactionService.deleteTransaction(created.getId(), testUser);
+        transactionService.deleteTransaction(created.getId(), "THIS_ONLY", testUser);
 
         // Verify the recurrence rule is cleaned up since no sibling transactions reference it
         assertFalse(recurrenceRuleRepository.findById(ruleId).isPresent());

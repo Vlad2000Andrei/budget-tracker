@@ -44,17 +44,19 @@ public class BudgetService {
             throw new IllegalArgumentException("Start date must be before or equal to end date");
         }
 
-        Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.getCategoryId()));
+        if (request.getCategoryId() != null) {
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.getCategoryId()));
 
-        // Check ownership of the category
-        if (category.getUserId() != null && !category.getUserId().equals(user.getId())) {
-            throw new ForbiddenActionException("You do not have access to the specified category");
-        }
+            // Check ownership of the category
+            if (category.getUserId() != null && !category.getUserId().equals(user.getId())) {
+                throw new ForbiddenActionException("You do not have access to the specified category");
+            }
 
-        // Validate type is EXPENSE
-        if (category.getType() != CategoryType.EXPENSE) {
-            throw new IllegalArgumentException("Budgets can only be set on categories of type EXPENSE");
+            // Validate type is EXPENSE
+            if (category.getType() != CategoryType.EXPENSE) {
+                throw new IllegalArgumentException("Budgets can only be set on categories of type EXPENSE");
+            }
         }
 
         // Check for overlaps
@@ -89,17 +91,19 @@ public class BudgetService {
             throw new IllegalArgumentException("Start date must be before or equal to end date");
         }
 
-        Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.getCategoryId()));
+        if (request.getCategoryId() != null) {
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.getCategoryId()));
 
-        // Check ownership of the category
-        if (category.getUserId() != null && !category.getUserId().equals(user.getId())) {
-            throw new ForbiddenActionException("You do not have access to the specified category");
-        }
+            // Check ownership of the category
+            if (category.getUserId() != null && !category.getUserId().equals(user.getId())) {
+                throw new ForbiddenActionException("You do not have access to the specified category");
+            }
 
-        // Validate type is EXPENSE
-        if (category.getType() != CategoryType.EXPENSE) {
-            throw new IllegalArgumentException("Budgets can only be set on categories of type EXPENSE");
+            // Validate type is EXPENSE
+            if (category.getType() != CategoryType.EXPENSE) {
+                throw new IllegalArgumentException("Budgets can only be set on categories of type EXPENSE");
+            }
         }
 
         // Check for overlaps

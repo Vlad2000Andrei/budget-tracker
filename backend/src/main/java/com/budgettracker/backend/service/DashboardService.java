@@ -113,11 +113,12 @@ public class DashboardService {
                         boolean isActive = !today.isBefore(budget.getStartDate()) && 
                                            (budget.getEndDate() == null || !today.isAfter(budget.getEndDate()));
                         if (isActive) {
-                                Category category = categoryRepository.findById(budget.getCategoryId()).orElse(null);
-
-                                // Get descendant category IDs to sum up spent
-                                List<Long> descendants = categoryRepository
-                                                .getDescendantCategoryIds(budget.getCategoryId());
+                                Category category = null;
+                                List<Long> descendants = null;
+                                if (budget.getCategoryId() != null) {
+                                        category = categoryRepository.findById(budget.getCategoryId()).orElse(null);
+                                        descendants = categoryRepository.getDescendantCategoryIds(budget.getCategoryId());
+                                }
 
                                 LocalDateTime startQuery;
                                 LocalDateTime endQuery;
@@ -131,15 +132,19 @@ public class DashboardService {
                                         endQuery = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
                                 }
 
+                                var whereCondition = TRANSACTIONS.USER_ID.eq(user.getId())
+                                                .and(TRANSACTIONS.TYPE.eq(CategoryType.EXPENSE))
+                                                .and(TRANSACTIONS.DATE.ge(startQuery))
+                                                .and(TRANSACTIONS.DATE.lt(endQuery));
+                                if (descendants != null) {
+                                        whereCondition = whereCondition.and(TRANSACTIONS.CATEGORY_ID.in(descendants));
+                                }
+
                                 List<org.jooq.Record2<BigDecimal, String>> budgetTxs = dsl.select(
                                                 TRANSACTIONS.CONVERTED_AMOUNT,
                                                 TRANSACTIONS.CONVERTED_CURRENCY)
                                                 .from(TRANSACTIONS)
-                                                .where(TRANSACTIONS.USER_ID.eq(user.getId())
-                                                                .and(TRANSACTIONS.CATEGORY_ID.in(descendants))
-                                                                .and(TRANSACTIONS.TYPE.eq(CategoryType.EXPENSE))
-                                                                .and(TRANSACTIONS.DATE.ge(startQuery))
-                                                                .and(TRANSACTIONS.DATE.lt(endQuery)))
+                                                .where(whereCondition)
                                                 .fetch();
 
                                 BigDecimal spent = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
@@ -161,9 +166,9 @@ public class DashboardService {
                                 budgetSummaries.add(DashboardSummaryDto.BudgetSummaryDto.builder()
                                                 .id(budget.getId())
                                                 .categoryId(budget.getCategoryId())
-                                                .categoryName(category != null ? category.getName() : "Unknown")
-                                                .categoryIcon(category != null ? category.getIcon() : "")
-                                                .categoryColor(category != null ? category.getColor() : "")
+                                                .categoryName(category != null ? category.getName() : "Overall Budget")
+                                                .categoryIcon(category != null ? category.getIcon() : "💰")
+                                                .categoryColor(category != null ? category.getColor() : "#4CAF50")
                                                 .spent(spent)
                                                 .limit(budget.getAmountLimit())
                                                 .pct(pct)

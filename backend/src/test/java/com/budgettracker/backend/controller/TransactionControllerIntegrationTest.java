@@ -12,6 +12,9 @@ import com.budgettracker.backend.repository.AccountRepository;
 import com.budgettracker.backend.repository.CategoryRepository;
 import com.budgettracker.backend.repository.TransactionRepository;
 import com.budgettracker.backend.repository.UserRepository;
+import com.budgettracker.backend.jooq.enums.RecurrenceFrequency;
+import com.budgettracker.backend.model.RecurrenceRule;
+import com.budgettracker.backend.repository.RecurrenceRuleRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,14 +27,18 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static com.budgettracker.backend.jooq.Tables.ACCOUNTS;
 import static com.budgettracker.backend.jooq.Tables.CATEGORIES;
+import static com.budgettracker.backend.jooq.Tables.RECURRENCE_RULES;
 import static com.budgettracker.backend.jooq.Tables.TRANSACTIONS;
 import static com.budgettracker.backend.jooq.Tables.USERS;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -59,6 +66,9 @@ public class TransactionControllerIntegrationTest {
     private TransactionRepository transactionRepository;
 
     @Autowired
+    private RecurrenceRuleRepository recurrenceRuleRepository;
+
+    @Autowired
     private DSLContext dsl;
 
     private User testUser;
@@ -72,6 +82,7 @@ public class TransactionControllerIntegrationTest {
     @BeforeEach
     public void setUp() {
         dsl.deleteFrom(TRANSACTIONS).execute();
+        dsl.deleteFrom(RECURRENCE_RULES).execute();
         dsl.deleteFrom(CATEGORIES).execute();
         dsl.deleteFrom(ACCOUNTS).execute();
         dsl.deleteFrom(USERS).execute();
@@ -431,5 +442,222 @@ public class TransactionControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(requestSavingsZero)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message", containsString("Savings transaction amount cannot be zero")));
+    }
+
+    @Test
+    public void testDeleteTransaction_ThisOnly() throws Exception {
+        // Create recurrence rule
+        RecurrenceRule rule = recurrenceRuleRepository.save(RecurrenceRule.builder()
+                .frequency(RecurrenceFrequency.WEEKLY)
+                .interval(1)
+                .startDate(LocalDate.of(2026, 6, 1))
+                .build());
+
+        // Create 3 transactions: tx1 (June 1st), tx2 (June 8th), tx3 (June 15th)
+        Transaction tx1 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .recurrenceRuleId(rule.getId())
+                .amount(new BigDecimal("10.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .build());
+
+        Transaction tx2 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .recurrenceRuleId(rule.getId())
+                .amount(new BigDecimal("10.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 8, 10, 0))
+                .build());
+
+        Transaction tx3 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .recurrenceRuleId(rule.getId())
+                .amount(new BigDecimal("10.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 15, 10, 0))
+                .build());
+
+        // Manually adjust the balance of the account
+        eurAccount.setBalance(new BigDecimal("970.0000"));
+        accountRepository.save(eurAccount);
+
+        // Delete tx2 with THIS_ONLY
+        mockMvc.perform(delete("/v1/transactions/" + tx2.getId())
+                        .header("X-User-Id", testUser.getId())
+                        .param("mode", "THIS_ONLY"))
+                .andExpect(status().isNoContent());
+
+        // Verify database: tx1 and tx3 remain, tx2 deleted
+        assertTrue(transactionRepository.findById(tx1.getId()).isPresent());
+        assertFalse(transactionRepository.findById(tx2.getId()).isPresent());
+        assertTrue(transactionRepository.findById(tx3.getId()).isPresent());
+
+        // Verify rule still exists
+        assertTrue(recurrenceRuleRepository.findById(rule.getId()).isPresent());
+
+        // Verify account balance: 970 + 10 = 980
+        Account updatedEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("980.0000"), updatedEur.getBalance());
+    }
+
+    @Test
+    public void testDeleteTransaction_All() throws Exception {
+        // Create recurrence rule
+        RecurrenceRule rule = recurrenceRuleRepository.save(RecurrenceRule.builder()
+                .frequency(RecurrenceFrequency.WEEKLY)
+                .interval(1)
+                .startDate(LocalDate.of(2026, 6, 1))
+                .build());
+
+        // Create 3 transactions: tx1 (June 1st), tx2 (June 8th), tx3 (June 15th)
+        Transaction tx1 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .recurrenceRuleId(rule.getId())
+                .amount(new BigDecimal("10.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .build());
+
+        Transaction tx2 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .recurrenceRuleId(rule.getId())
+                .amount(new BigDecimal("10.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 8, 10, 0))
+                .build());
+
+        Transaction tx3 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .recurrenceRuleId(rule.getId())
+                .amount(new BigDecimal("10.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 15, 10, 0))
+                .build());
+
+        // Manually adjust the balance of the account
+        eurAccount.setBalance(new BigDecimal("970.0000"));
+        accountRepository.save(eurAccount);
+
+        // Delete tx2 with ALL
+        mockMvc.perform(delete("/v1/transactions/" + tx2.getId())
+                        .header("X-User-Id", testUser.getId())
+                        .param("mode", "ALL"))
+                .andExpect(status().isNoContent());
+
+        // Verify database: tx1, tx2, tx3 deleted
+        assertFalse(transactionRepository.findById(tx1.getId()).isPresent());
+        assertFalse(transactionRepository.findById(tx2.getId()).isPresent());
+        assertFalse(transactionRepository.findById(tx3.getId()).isPresent());
+
+        // Verify rule deleted
+        assertFalse(recurrenceRuleRepository.findById(rule.getId()).isPresent());
+
+        // Verify account balance: 970 + 30 = 1000
+        Account updatedEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("1000.0000"), updatedEur.getBalance());
+    }
+
+    @Test
+    public void testDeleteTransaction_Future() throws Exception {
+        // Create recurrence rule
+        RecurrenceRule rule = recurrenceRuleRepository.save(RecurrenceRule.builder()
+                .frequency(RecurrenceFrequency.WEEKLY)
+                .interval(1)
+                .startDate(LocalDate.of(2026, 6, 1))
+                .build());
+
+        // Create 3 transactions: tx1 (June 1st), tx2 (June 8th), tx3 (June 15th)
+        Transaction tx1 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .recurrenceRuleId(rule.getId())
+                .amount(new BigDecimal("10.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .build());
+
+        Transaction tx2 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .recurrenceRuleId(rule.getId())
+                .amount(new BigDecimal("10.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 8, 10, 0))
+                .build());
+
+        Transaction tx3 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .recurrenceRuleId(rule.getId())
+                .amount(new BigDecimal("10.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 15, 10, 0))
+                .build());
+
+        // Manually adjust the balance of the account
+        eurAccount.setBalance(new BigDecimal("970.0000"));
+        accountRepository.save(eurAccount);
+
+        // Delete tx2 with FUTURE
+        mockMvc.perform(delete("/v1/transactions/" + tx2.getId())
+                        .header("X-User-Id", testUser.getId())
+                        .param("mode", "FUTURE"))
+                .andExpect(status().isNoContent());
+
+        // Verify database: tx1 remains, tx2 and tx3 deleted
+        assertTrue(transactionRepository.findById(tx1.getId()).isPresent());
+        assertFalse(transactionRepository.findById(tx2.getId()).isPresent());
+        assertFalse(transactionRepository.findById(tx3.getId()).isPresent());
+
+        // Verify rule exists and has new end date (tx2 date (June 8) - 1 day = June 7)
+        RecurrenceRule updatedRule = recurrenceRuleRepository.findById(rule.getId()).orElseThrow();
+        assertEquals(LocalDate.of(2026, 6, 7), updatedRule.getEndDate());
+
+        // Verify account balance: 970 + 20 = 990
+        Account updatedEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("990.0000"), updatedEur.getBalance());
     }
 }

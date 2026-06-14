@@ -373,4 +373,72 @@ public class BudgetControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message", containsString("overlapping budget already exists")));
     }
+
+    @Test
+    public void testCreateOverallBudget_Success() throws Exception {
+        CreateBudgetRequest request = CreateBudgetRequest.builder()
+                .categoryId(null) // Overall budget
+                .amountLimit(new BigDecimal("1000.00"))
+                .startDate(LocalDate.of(2026, 6, 1))
+                .endDate(LocalDate.of(2026, 6, 30))
+                .rolloverRule(RolloverRuleType.NONE)
+                .build();
+
+        mockMvc.perform(post("/v1/budgets")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.categoryId", nullValue()))
+                .andExpect(jsonPath("$.amountLimit", is(1000.0)))
+                .andExpect(jsonPath("$.startDate", is("2026-06-01")))
+                .andExpect(jsonPath("$.endDate", is("2026-06-30")));
+    }
+
+    @Test
+    public void testCreateOverallBudget_OverlapCheck() throws Exception {
+        // 1. Create an overall budget for June 2026
+        CreateBudgetRequest overall1 = CreateBudgetRequest.builder()
+                .categoryId(null)
+                .amountLimit(new BigDecimal("1000.00"))
+                .startDate(LocalDate.of(2026, 6, 1))
+                .endDate(LocalDate.of(2026, 6, 30))
+                .build();
+
+        mockMvc.perform(post("/v1/budgets")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(overall1)))
+                .andExpect(status().isCreated());
+
+        // 2. Attempt to create another overlapping overall budget -> Should fail
+        CreateBudgetRequest overall2 = CreateBudgetRequest.builder()
+                .categoryId(null)
+                .amountLimit(new BigDecimal("500.00"))
+                .startDate(LocalDate.of(2026, 6, 15))
+                .endDate(LocalDate.of(2026, 7, 15))
+                .build();
+
+        mockMvc.perform(post("/v1/budgets")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(overall2)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("overlapping budget already exists")));
+
+        // 3. Create a category-specific budget overlapping June 2026 -> Should succeed (different categories)
+        CreateBudgetRequest categoryBudget = CreateBudgetRequest.builder()
+                .categoryId(expenseCategory.getId())
+                .amountLimit(new BigDecimal("200.00"))
+                .startDate(LocalDate.of(2026, 6, 1))
+                .endDate(LocalDate.of(2026, 6, 30))
+                .build();
+
+        mockMvc.perform(post("/v1/budgets")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(categoryBudget)))
+                .andExpect(status().isCreated());
+    }
 }

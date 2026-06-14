@@ -67,8 +67,10 @@ public class TransactionController {
     }
 
     @DeleteMapping("/{transactionId}")
-    public ResponseEntity<Void> deleteTransaction(@PathVariable Long transactionId, User user) {
-        transactionService.deleteTransaction(transactionId, user);
+    public ResponseEntity<Void> deleteTransaction(@PathVariable Long transactionId,
+                                                   @RequestParam(required = false, defaultValue = "THIS_ONLY") String mode,
+                                                   User user) {
+        transactionService.deleteTransaction(transactionId, mode, user);
         return ResponseEntity.noContent().build();
     }
 }

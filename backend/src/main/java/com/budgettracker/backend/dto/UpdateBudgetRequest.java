@@ -17,7 +17,6 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class UpdateBudgetRequest {
 
-    @NotNull(message = "Category ID is required")
     private Long categoryId;
 
     @NotNull(message = "Amount limit is required")

@@ -599,3 +599,143 @@
   }
 }
 
+/* Deletion Choice Modal */
+.choiceBackdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--md-scrim);
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 280ms var(--md-easing-decelerate);
+}
+
+.choiceToast {
+  width: 100%;
+  max-width: 480px;
+  background: var(--md-surface);
+  border-radius: var(--md-shape-bottom-sheet) var(--md-shape-bottom-sheet) 0 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--md-elevation-5);
+  animation: toastIn 280ms var(--md-easing-decelerate);
+  gap: 16px;
+  border: 1px solid var(--md-outline-variant);
+  z-index: 301;
+}
+
+@keyframes toastIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.choiceTitle {
+  font-size: var(--md-title-large-size);
+  font-weight: 700;
+  color: var(--md-on-surface);
+  margin: 0;
+}
+
+.choiceSubtitle {
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface-variant);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 10px 12px;
+  border-radius: var(--md-shape-medium);
+  border: 1px solid var(--md-outline-variant);
+  background-color: var(--md-surface-container-low);
+  transition: background-color var(--md-duration-short) var(--md-easing-standard);
+}
+
+.radioLabel:hover {
+  background-color: var(--md-surface-container-high);
+}
+
+.radioInput {
+  accent-color: var(--md-primary);
+  width: 18px;
+  height: 18px;
+}
+
+.radioText {
+  font-size: var(--md-body-large-size);
+  font-weight: 500;
+  color: var(--md-on-surface);
+}
+
+.choiceActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--md-outline-variant);
+  padding-top: 16px;
+}
+
+.choiceCancelBtn {
+  background: none;
+  border: none;
+  padding: 12px 20px;
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  color: var(--md-primary);
+  border-radius: var(--md-shape-button);
+  cursor: pointer;
+}
+
+.choiceCancelBtn:hover {
+  background-color: var(--md-primary-container);
+}
+
+.choiceConfirmBtn {
+  background-color: var(--md-error);
+  color: var(--md-on-error);
+  border: none;
+  padding: 12px 24px;
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  border-radius: var(--md-shape-button);
+  cursor: pointer;
+  box-shadow: var(--md-elevation-1);
+}
+
+.choiceConfirmBtn:hover {
+  background-color: #ba1a1a;
+  box-shadow: var(--md-elevation-2);
+}
+
+.choiceConfirmBtn:disabled,
+.choiceCancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .choiceActions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .choiceConfirmBtn,
+  .choiceCancelBtn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+

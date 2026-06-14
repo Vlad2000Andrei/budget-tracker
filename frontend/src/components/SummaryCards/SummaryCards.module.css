@@ -244,11 +244,26 @@
   color: var(--md-error);
 }
 
+.goalFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 3.5px;
+}
+
 .goalAmounts {
   font-size: var(--md-body-small-size);
   color: var(--md-outline);
-  display: block;
-  margin-top: 3px;
+}
+
+.goalRemaining {
+  font-size: var(--md-body-small-size);
+  color: var(--md-outline);
+  font-weight: 500;
+}
+
+.remainingDanger {
+  color: var(--md-error);
 }
 
 /* ── Progress Bar ─────────────────────────────────── */

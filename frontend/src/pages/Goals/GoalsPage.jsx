@@ -111,7 +111,7 @@ export default function GoalsPage() {
   // Switch to Edit Mode
   const startEdit = (goal) => {
     setEditingGoal(goal);
-    setCategoryId(goal.categoryId.toString());
+    setCategoryId(goal.categoryId ? goal.categoryId.toString() : 'OVERALL');
     setAlert(null);
     setIsFormOpen(true);
 
@@ -156,32 +156,26 @@ export default function GoalsPage() {
     setAlert(null);
 
     try {
-      const cat = categories.find(c => c.id === parseInt(categoryId));
+      const isOverall = categoryId === 'OVERALL';
+      const cat = isOverall ? { name: 'Overall Budget' } : categories.find(c => c.id === parseInt(categoryId));
       if (!cat) throw new Error('Selected category not found.');
 
       if (activeTab === 'BUDGETS') {
+        const payload = {
+          categoryId: isOverall ? null : parseInt(categoryId),
+          amountLimit: numAmount,
+          startDate,
+          endDate: endDate || null,
+          rolloverRule
+        };
         if (editingGoal) {
           // Update Budget
-          const payload = {
-            categoryId: parseInt(categoryId),
-            amountLimit: numAmount,
-            startDate,
-            endDate: endDate || null,
-            rolloverRule
-          };
           await axiosInstance.patch(`/v1/budgets/${editingGoal.id}`, payload);
-          setAlert({ type: 'success', text: `Budget for "${cat.name}" updated successfully.` });
+          setAlert({ type: 'success', text: isOverall ? 'Overall budget updated successfully.' : `Budget for "${cat.name}" updated successfully.` });
         } else {
           // Create Budget
-          const payload = {
-            categoryId: parseInt(categoryId),
-            amountLimit: numAmount,
-            startDate,
-            endDate: endDate || null,
-            rolloverRule
-          };
           await axiosInstance.post('/v1/budgets', payload);
-          setAlert({ type: 'success', text: `Budget for "${cat.name}" created successfully.` });
+          setAlert({ type: 'success', text: isOverall ? 'Overall budget created successfully.' : `Budget for "${cat.name}" created successfully.` });
         }
       } else {
         // Savings Goals
@@ -232,7 +226,7 @@ export default function GoalsPage() {
   // Confirm delete via API
   const confirmDeleteGoal = async () => {
     if (!goalToDelete) return;
-    const cat = categories.find(c => c.id === goalToDelete.categoryId);
+    const cat = goalToDelete.categoryId ? categories.find(c => c.id === goalToDelete.categoryId) : { name: 'Overall Budget' };
     setAlert(null);
 
     try {
@@ -333,7 +327,9 @@ export default function GoalsPage() {
             ) : (
               <div className={styles.goalsList}>
                 {budgets.map((b) => {
-                  const cat = categories.find(c => c.id === b.categoryId) || {};
+                  const cat = b.categoryId 
+                    ? (categories.find(c => c.id === b.categoryId) || { name: 'Unknown Category', icon: '📦', color: '#FF5733' })
+                    : { name: 'Overall Budget', icon: '💰', color: '#4CAF50' };
                   
                   // Look up calculated spent details from dashboard summary if active
                   const activeSummary = activeDashboardBudgets.find(db => db.id === b.id);
@@ -539,6 +535,9 @@ export default function GoalsPage() {
                   required
                 >
                   <option value="">-- Select Category --</option>
+                  {activeTab === 'BUDGETS' && (
+                    <option value="OVERALL">💰 Overall Budget (All categories)</option>
+                  )}
                   {filteredCategories.map(c => (
                     <option key={c.id} value={c.id}>
                       {getCategoryIcon(c.icon)} {c.name}
@@ -688,14 +687,14 @@ export default function GoalsPage() {
             <div className={styles.confirmBody}>
               <div className={styles.confirmWarning}>
                 ⚠️ Warning: Deleting the {activeTab === 'BUDGETS' ? 'spending budget' : 'savings goal'} for &quot;
-                {categories.find(c => c.id === goalToDelete.categoryId)?.name || 'Category'}&quot; is permanent and cannot be undone.
+                {goalToDelete.categoryId ? (categories.find(c => c.id === goalToDelete.categoryId)?.name || 'Category') : 'Overall Budget'}&quot; is permanent and cannot be undone.
               </div>
 
               <div className={styles.confirmForm}>
                 <div className={styles.formGroup}>
                   <label htmlFor="confirm-goal-name" className={styles.label}>
                     To confirm, type the category name: <strong>
-                      {categories.find(c => c.id === goalToDelete.categoryId)?.name || 'Category'}
+                      {goalToDelete.categoryId ? (categories.find(c => c.id === goalToDelete.categoryId)?.name || 'Category') : 'Overall Budget'}
                     </strong>
                   </label>
                   <input
@@ -723,7 +722,7 @@ export default function GoalsPage() {
                 className={`${styles.btn} ${styles.btnDanger}`}
                 onClick={confirmDeleteGoal}
                 disabled={
-                  confirmName !== (categories.find(c => c.id === goalToDelete.categoryId)?.name || 'Category')
+                  confirmName !== (goalToDelete.categoryId ? (categories.find(c => c.id === goalToDelete.categoryId)?.name || 'Category') : 'Overall Budget')
                 }
               >
                 Verify & Delete

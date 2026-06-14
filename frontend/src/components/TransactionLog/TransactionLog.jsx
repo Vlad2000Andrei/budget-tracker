@@ -46,6 +46,8 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
   const isMultiCurrency = t.currency && t.currency !== defaultCurrency;
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [showDeleteOptions, setShowDeleteOptions] = useState(false);
+  const [selectedDeleteMode, setSelectedDeleteMode] = useState('THIS_ONLY');
   const backdropRef = useRef(null);
 
   const category = categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦' };
@@ -63,17 +65,18 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  async function handleDelete() {
+  async function handleDelete(mode = 'THIS_ONLY') {
     setDeleting(true);
     setDeleteError(null);
     try {
-      await axiosInstance.delete(`/v1/transactions/${t.id}`);
+      await axiosInstance.delete(`/v1/transactions/${t.id}?mode=${mode}`);
       window.dispatchEvent(new Event('transaction-added'));
       onDeleted();
       onClose();
     } catch {
       setDeleteError('Failed to delete. Please try again.');
       setDeleting(false);
+      setShowDeleteOptions(false);
     }
   }
 
@@ -95,7 +98,7 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
             <span className={styles.toastIcon} aria-hidden="true">{category.icon}</span>
             <div>
               <div className={styles.toastCategory}>
-                {category.name}
+                {category.breadcrumb || category.name}
                 {t.recurrenceRuleId && (
                   <span className={styles.recurringBadge}>
                     <RecurringIcon />
@@ -177,7 +180,7 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
           </button>
           <button
             className={styles.toastDeleteBtn}
-            onClick={handleDelete}
+            onClick={t.recurrenceRuleId ? () => setShowDeleteOptions(true) : () => handleDelete('THIS_ONLY')}
             disabled={deleting}
             aria-busy={deleting}
           >
@@ -193,6 +196,72 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
             )}
           </button>
         </div>
+
+        {showDeleteOptions && (
+          <div className={styles.choiceBackdrop} role="dialog" aria-modal="true" aria-label="Confirm deletion mode">
+            <div className={styles.choiceToast}>
+              <h3 className={styles.choiceTitle}>Delete Recurring Transaction</h3>
+              <p className={styles.choiceSubtitle}>Choose how you want to delete this recurring transaction series:</p>
+              
+              <div className={styles.radioGroup}>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="deleteMode"
+                    value="THIS_ONLY"
+                    checked={selectedDeleteMode === 'THIS_ONLY'}
+                    onChange={() => setSelectedDeleteMode('THIS_ONLY')}
+                    className={styles.radioInput}
+                  />
+                  <span className={styles.radioText}>Just this occurrence</span>
+                </label>
+
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="deleteMode"
+                    value="FUTURE"
+                    checked={selectedDeleteMode === 'FUTURE'}
+                    onChange={() => setSelectedDeleteMode('FUTURE')}
+                    className={styles.radioInput}
+                  />
+                  <span className={styles.radioText}>This and all future occurrences</span>
+                </label>
+
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="deleteMode"
+                    value="ALL"
+                    checked={selectedDeleteMode === 'ALL'}
+                    onChange={() => setSelectedDeleteMode('ALL')}
+                    className={styles.radioInput}
+                  />
+                  <span className={styles.radioText}>All occurrences in the series</span>
+                </label>
+              </div>
+
+              <div className={styles.choiceActions}>
+                <button 
+                  type="button" 
+                  className={styles.choiceCancelBtn} 
+                  onClick={() => setShowDeleteOptions(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className={styles.choiceConfirmBtn} 
+                  onClick={() => handleDelete(selectedDeleteMode)}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -240,7 +309,7 @@ function AllTab({ categoriesMap, accountsMap }) {
 
   const filtered = transactions.filter((t) => {
     if (typeFilter !== 'All' && t.type !== typeFilter) return false;
-    const catName = categoriesMap[t.categoryId]?.name || '';
+    const catName = categoriesMap[t.categoryId]?.breadcrumb || categoriesMap[t.categoryId]?.name || '';
     if (search && !catName.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -303,7 +372,7 @@ function AllTab({ categoriesMap, accountsMap }) {
                 <div className={styles.rowMain}>
                   <div className={styles.rowTop}>
                     <span className={styles.rowCategory}>
-                      {category.name}
+                      {category.breadcrumb || category.name}
                       {t.recurrenceRuleId && (
                         <span className={styles.recurringBadge}>
                           <RecurringIcon />
@@ -471,10 +540,34 @@ export default function TransactionLog() {
         axiosInstance.get('/v1/categories'),
         axiosInstance.get('/v1/accounts'),
       ]);
+      
+      const rawCats = {};
+      catsRes.data.forEach((c) => {
+        rawCats[c.id] = c;
+      });
+
+      const getBreadcrumb = (catId) => {
+        const path = [];
+        let curr = rawCats[catId];
+        let depth = 0;
+        while (curr && depth < 20) {
+          path.unshift(curr.name);
+          curr = curr.parentId ? rawCats[curr.parentId] : null;
+          depth++;
+        }
+        return path.join(' › ');
+      };
+
       const cats = {};
       catsRes.data.forEach((c) => {
-        cats[c.id] = { name: c.name, icon: getCategoryIcon(c.icon), color: c.color };
+        cats[c.id] = {
+          name: c.name,
+          breadcrumb: getBreadcrumb(c.id),
+          icon: getCategoryIcon(c.icon),
+          color: c.color
+        };
       });
+
       const accs = {};
       accsRes.data.forEach((a) => {
         accs[a.id] = a.name;

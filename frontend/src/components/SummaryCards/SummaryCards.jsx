@@ -146,18 +146,25 @@ export default function SummaryCards() {
           {budgets.length === 0 ? (
             <div className={styles.emptyState}>No active budgets</div>
           ) : (
-            budgets.map((b) => (
-              <div key={b.id} className={styles.goalRow}>
-                <div className={styles.goalMeta}>
-                  <span className={styles.goalName}>
-                    {getCategoryIcon(b.categoryIcon)} {b.categoryName}
-                  </span>
-                  <span className={`${styles.goalPct} ${b.pct >= 90 ? styles.goalPctDanger : ''}`}>{b.pct}%</span>
+            budgets.map((b) => {
+              const remaining = b.limit - b.spent;
+              const remainingText = remaining >= 0 ? `${fmt(remaining, balanceCurrency)} remaining` : `${fmt(Math.abs(remaining), balanceCurrency)} over`;
+              return (
+                <div key={b.id} className={styles.goalRow}>
+                  <div className={styles.goalMeta}>
+                    <span className={styles.goalName}>
+                      {getCategoryIcon(b.categoryIcon)} {b.categoryName}
+                    </span>
+                    <span className={`${styles.goalPct} ${b.pct >= 90 ? styles.goalPctDanger : ''}`}>{b.pct}%</span>
+                  </div>
+                  <ProgressBar pct={b.pct} variant="primary" />
+                  <div className={styles.goalFooter}>
+                    <span className={styles.goalAmounts}>{fmt(b.spent, balanceCurrency)} / {fmt(b.limit, balanceCurrency)}</span>
+                    <span className={`${styles.goalRemaining} ${remaining < 0 ? styles.remainingDanger : ''}`}>{remainingText}</span>
+                  </div>
                 </div>
-                <ProgressBar pct={b.pct} variant="primary" />
-                <span className={styles.goalAmounts}>{fmt(b.spent, balanceCurrency)} / {fmt(b.limit, balanceCurrency)}</span>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -166,18 +173,25 @@ export default function SummaryCards() {
           {savingsGoals.length === 0 ? (
             <div className={styles.emptyState}>No active savings goals</div>
           ) : (
-            savingsGoals.map((g) => (
-              <div key={g.id} className={styles.goalRow}>
-                <div className={styles.goalMeta}>
-                  <span className={styles.goalName}>
-                    {getCategoryIcon(g.categoryIcon)} {g.categoryName}
-                  </span>
-                  <span className={styles.goalPct}>{g.pct}%</span>
+            savingsGoals.map((g) => {
+              const remaining = g.target - g.current;
+              const remainingText = remaining > 0 ? `${fmt(remaining, balanceCurrency)} to go` : 'Goal achieved!';
+              return (
+                <div key={g.id} className={styles.goalRow}>
+                  <div className={styles.goalMeta}>
+                    <span className={styles.goalName}>
+                      {getCategoryIcon(g.categoryIcon)} {g.categoryName}
+                    </span>
+                    <span className={styles.goalPct}>{g.pct}%</span>
+                  </div>
+                  <ProgressBar pct={g.pct} variant="tertiary" />
+                  <div className={styles.goalFooter}>
+                    <span className={styles.goalAmounts}>{fmt(g.current, balanceCurrency)} / {fmt(g.target, balanceCurrency)}</span>
+                    <span className={styles.goalRemaining}>{remainingText}</span>
+                  </div>
                 </div>
-                <ProgressBar pct={g.pct} variant="tertiary" />
-                <span className={styles.goalAmounts}>{fmt(g.current, balanceCurrency)} / {fmt(g.target, balanceCurrency)}</span>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
