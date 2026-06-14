@@ -1,11 +1,15 @@
 package com.budgettracker.backend.controller;
 
 import com.budgettracker.backend.dto.CreateTransactionRequest;
+import com.budgettracker.backend.dto.CreateTransferRequest;
+import com.budgettracker.backend.dto.CreateSavingsTransactionRequest;
 import com.budgettracker.backend.dto.TransactionDto;
+import com.budgettracker.backend.dto.SavingsTransactionDto;
 import com.budgettracker.backend.dto.UpdateTransactionRequest;
 import com.budgettracker.backend.jooq.enums.CategoryType;
 import com.budgettracker.backend.model.User;
 import com.budgettracker.backend.service.TransactionService;
+import com.budgettracker.backend.service.SavingsGoalService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -30,10 +34,12 @@ import java.util.List;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final SavingsGoalService savingsGoalService;
 
     @Autowired
-    public TransactionController(TransactionService transactionService) {
+    public TransactionController(TransactionService transactionService, SavingsGoalService savingsGoalService) {
         this.transactionService = transactionService;
+        this.savingsGoalService = savingsGoalService;
     }
 
     @GetMapping
@@ -42,7 +48,7 @@ public class TransactionController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) CategoryType type,
+            @RequestParam(required = false) String type,
             User user) {
         List<TransactionDto> transactions = transactionService.getTransactions(user, accountId, categoryId, startDate, endDate, type);
         return ResponseEntity.ok(transactions);
@@ -51,6 +57,26 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<TransactionDto> createTransaction(@Valid @RequestBody CreateTransactionRequest request, User user) {
         TransactionDto created = transactionService.createTransaction(request, user);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<TransactionDto> createTransfer(@Valid @RequestBody CreateTransferRequest request, User user) {
+        TransactionDto created = transactionService.createTransfer(request, user);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @PostMapping("/savings")
+    public ResponseEntity<SavingsTransactionDto> createSavingsTransaction(@Valid @RequestBody CreateSavingsTransactionRequest request, User user) {
+        SavingsTransactionDto created = savingsGoalService.createSavingsTransaction(null, request, user);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(created.getId())

@@ -211,6 +211,23 @@ public class CategoryService {
                 .build());
     }
 
+    @Transactional
+    public Category getOrCreateTransferCategory(User user, CategoryType type) {
+        String name = type == CategoryType.EXPENSE ? "Transfer (Out)" : "Transfer (In)";
+        List<Category> categories = categoryRepository.findByUserIdAndSystemWide(user.getId());
+        return categories.stream()
+                .filter(c -> c.getType() == type && name.equals(c.getName()))
+                .findFirst()
+                .orElseGet(() -> categoryRepository.save(Category.builder()
+                        .userId(user.getId())
+                        .name(name)
+                        .type(type)
+                        .color("#9C27B0")
+                        .icon("swap_horiz")
+                        .build()));
+    }
+
+
     private CategoryDto mapToDto(Category category) {
         if (category == null) {
             return null;

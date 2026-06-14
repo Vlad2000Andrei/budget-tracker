@@ -135,7 +135,8 @@ public class DashboardService {
                                 var whereCondition = TRANSACTIONS.USER_ID.eq(user.getId())
                                                 .and(TRANSACTIONS.TYPE.eq(CategoryType.EXPENSE))
                                                 .and(TRANSACTIONS.DATE.ge(startQuery))
-                                                .and(TRANSACTIONS.DATE.lt(endQuery));
+                                                .and(TRANSACTIONS.DATE.lt(endQuery))
+                                                .and(TRANSACTIONS.LINKED_TRANSACTION_ID.isNull());
                                 if (descendants != null) {
                                         whereCondition = whereCondition.and(TRANSACTIONS.CATEGORY_ID.in(descendants));
                                 }
@@ -231,6 +232,7 @@ public class DashboardService {
                                 .and(TRANSACTIONS.TYPE.eq(type))
                                 .and(TRANSACTIONS.DATE.ge(start))
                                 .and(TRANSACTIONS.DATE.lt(end))
+                                .and(TRANSACTIONS.LINKED_TRANSACTION_ID.isNull())
                                 .and(oneOff
                                                 ? TRANSACTIONS.RECURRENCE_RULE_ID.isNull()
                                                 : TRANSACTIONS.RECURRENCE_RULE_ID.isNotNull());

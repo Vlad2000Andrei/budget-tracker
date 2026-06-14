@@ -2,6 +2,7 @@ package com.budgettracker.backend.service;
 
 import com.budgettracker.backend.dto.CreateRecurrenceRuleRequest;
 import com.budgettracker.backend.dto.CreateTransactionRequest;
+import com.budgettracker.backend.dto.CreateTransferRequest;
 import com.budgettracker.backend.dto.RecurrenceRuleDto;
 import com.budgettracker.backend.dto.TransactionDto;
 import com.budgettracker.backend.dto.UpdateTransactionRequest;
@@ -38,6 +39,7 @@ public class TransactionService {
     private final SavingsGoalService savingsGoalService;
     private final RecurrenceRuleRepository recurrenceRuleRepository;
     private final RecurringTransactionEngine recurringTransactionEngine;
+    private final CategoryService categoryService;
 
     @Autowired
     public TransactionService(TransactionRepository transactionRepository,
@@ -46,7 +48,8 @@ public class TransactionService {
                               CurrencyExchangeService currencyExchangeService,
                               SavingsGoalService savingsGoalService,
                               RecurrenceRuleRepository recurrenceRuleRepository,
-                              RecurringTransactionEngine recurringTransactionEngine) {
+                              RecurringTransactionEngine recurringTransactionEngine,
+                              CategoryService categoryService) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.accountRepository = accountRepository;
@@ -54,10 +57,11 @@ public class TransactionService {
         this.savingsGoalService = savingsGoalService;
         this.recurrenceRuleRepository = recurrenceRuleRepository;
         this.recurringTransactionEngine = recurringTransactionEngine;
+        this.categoryService = categoryService;
     }
 
     public List<TransactionDto> getTransactions(User user, Long accountId, Long categoryId,
-                                                LocalDate startDate, LocalDate endDate, CategoryType type) {
+                                                LocalDate startDate, LocalDate endDate, String type) {
         // If accountId is provided, verify ownership
         if (accountId != null) {
             Account account = accountRepository.findById(accountId)
@@ -76,10 +80,22 @@ public class TransactionService {
             }
         }
 
-        return transactionRepository.findAll(user.getId(), accountId, categoryId, startDate, endDate, type)
-                .stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
+        List<Transaction> list = transactionRepository.findAll(user.getId(), accountId, categoryId, startDate, endDate, type);
+        java.util.List<TransactionDto> result = new java.util.ArrayList<>();
+        java.util.Set<Long> processedIds = new java.util.HashSet<>();
+
+        for (Transaction tx : list) {
+            if (processedIds.contains(tx.getId())) {
+                continue;
+            }
+            if (tx.getLinkedTransactionId() != null) {
+                processedIds.add(tx.getId());
+                processedIds.add(tx.getLinkedTransactionId());
+            }
+            result.add(mapToDto(tx));
+        }
+
+        return result;
     }
 
     @Transactional
@@ -168,6 +184,92 @@ public class TransactionService {
         }
 
         return mapToDto(saved);
+    }
+
+    @Transactional
+    public TransactionDto createTransfer(CreateTransferRequest request, User user) {
+        // Validate source account
+        Account fromAccount = accountRepository.findById(request.getFromAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Source account not found with ID: " + request.getFromAccountId()));
+        if (!fromAccount.getUserId().equals(user.getId())) {
+            throw new ForbiddenActionException("You do not have access to the source account");
+        }
+
+        // Validate destination account
+        Account toAccount = accountRepository.findById(request.getToAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Destination account not found with ID: " + request.getToAccountId()));
+        if (!toAccount.getUserId().equals(user.getId())) {
+            throw new ForbiddenActionException("You do not have access to the destination account");
+        }
+
+        if (fromAccount.getId().equals(toAccount.getId())) {
+            throw new IllegalArgumentException("Source and destination accounts must be different");
+        }
+
+        if (!fromAccount.getType().equals(toAccount.getType())) {
+            throw new IllegalArgumentException("Source and destination accounts must be of the same type for a move transaction");
+        }
+
+        // Check source account balance native currency requirement
+        BigDecimal requiredInFromCurrency = currencyExchangeService.convert(request.getAmount(), request.getCurrency(), fromAccount.getCurrency());
+        if (fromAccount.getBalance().compareTo(requiredInFromCurrency) < 0) {
+            throw new IllegalArgumentException(
+                    "Insufficient balance in source account '" + fromAccount.getName() + "'. Available: "
+                    + fromAccount.getBalance() + " " + fromAccount.getCurrency());
+        }
+
+        // Fetch or create double-entry Categories
+        Category expenseCategory = categoryService.getOrCreateTransferCategory(user, CategoryType.EXPENSE);
+        Category incomeCategory = categoryService.getOrCreateTransferCategory(user, CategoryType.INCOME);
+
+        // Convert amounts
+        BigDecimal exchangeRate = currencyExchangeService.getExchangeRate(request.getCurrency(), user.getDefaultCurrency());
+        BigDecimal convertedAmount = request.getAmount().multiply(exchangeRate).setScale(4, java.math.RoundingMode.HALF_UP);
+
+        // Create transaction A (source: EXPENSE)
+        Transaction sourceTx = Transaction.builder()
+                .userId(user.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(fromAccount.getId())
+                .amount(request.getAmount())
+                .currency(request.getCurrency().toUpperCase())
+                .convertedAmount(convertedAmount)
+                .convertedCurrency(user.getDefaultCurrency())
+                .exchangeRate(exchangeRate)
+                .type(CategoryType.EXPENSE)
+                .notes(request.getNotes())
+                .date(request.getDate())
+                .build();
+        Transaction savedSource = transactionRepository.save(sourceTx);
+
+        // Create transaction B (destination: INCOME)
+        Transaction destTx = Transaction.builder()
+                .userId(user.getId())
+                .categoryId(incomeCategory.getId())
+                .accountId(toAccount.getId())
+                .amount(request.getAmount())
+                .currency(request.getCurrency().toUpperCase())
+                .convertedAmount(convertedAmount)
+                .convertedCurrency(user.getDefaultCurrency())
+                .exchangeRate(exchangeRate)
+                .type(CategoryType.INCOME)
+                .notes(request.getNotes())
+                .date(request.getDate())
+                .build();
+        Transaction savedDest = transactionRepository.save(destTx);
+
+        // Link them
+        transactionRepository.updateLinkedTransactionId(savedSource.getId(), savedDest.getId());
+        transactionRepository.updateLinkedTransactionId(savedDest.getId(), savedSource.getId());
+        savedSource.setLinkedTransactionId(savedDest.getId());
+
+        // Adjust balances
+        BigDecimal debitAmount = currencyExchangeService.convert(request.getAmount(), request.getCurrency(), fromAccount.getCurrency());
+        BigDecimal creditAmount = currencyExchangeService.convert(request.getAmount(), request.getCurrency(), toAccount.getCurrency());
+        adjustAccountBalance(fromAccount, debitAmount, CategoryType.EXPENSE);
+        adjustAccountBalance(toAccount, creditAmount, CategoryType.INCOME);
+
+        return mapToDto(savedSource);
     }
 
     @Transactional
@@ -363,6 +465,17 @@ public class TransactionService {
                 reverseAccountBalance(account, accountAmount, tx.getType());
             }
         }
+        
+        Long linkedId = tx.getLinkedTransactionId();
+        if (linkedId != null) {
+            // Clear links first to break recursion
+            transactionRepository.clearLink(tx.getId());
+            transactionRepository.clearLink(linkedId);
+            
+            // Delete the other transaction
+            transactionRepository.findById(linkedId).ifPresent(this::deleteSingleTransactionInternal);
+        }
+
         transactionRepository.deleteById(tx.getId());
         if (tx.getType() == CategoryType.SAVINGS) {
             savingsGoalService.reconcileAllGoalsForCategory(tx.getUserId(), tx.getCategoryId());
@@ -417,6 +530,25 @@ public class TransactionService {
                             .build())
                     .orElse(null);
         }
+
+        String mappedType = transaction.getType() != null ? transaction.getType().name() : null;
+        Long fromAccountId = null;
+        Long toAccountId = null;
+
+        if (transaction.getLinkedTransactionId() != null) {
+            mappedType = "MOVE";
+            Transaction linked = transactionRepository.findById(transaction.getLinkedTransactionId()).orElse(null);
+            if (linked != null) {
+                if (transaction.getType() == CategoryType.EXPENSE) {
+                    fromAccountId = transaction.getAccountId();
+                    toAccountId = linked.getAccountId();
+                } else {
+                    fromAccountId = linked.getAccountId();
+                    toAccountId = transaction.getAccountId();
+                }
+            }
+        }
+
         return TransactionDto.builder()
                 .id(transaction.getId())
                 .categoryId(transaction.getCategoryId())
@@ -426,9 +558,12 @@ public class TransactionService {
                 .currency(transaction.getCurrency())
                 .convertedAmount(transaction.getConvertedAmount())
                 .exchangeRate(transaction.getExchangeRate())
-                .type(transaction.getType())
+                .type(mappedType)
+                .fromAccountId(fromAccountId)
+                .toAccountId(toAccountId)
                 .notes(transaction.getNotes())
                 .date(transaction.getDate())
+                .linkedTransactionId(transaction.getLinkedTransactionId())
                 .createdAt(transaction.getCreatedAt())
                 .updatedAt(transaction.getUpdatedAt())
                 .recurrenceRule(ruleDto)

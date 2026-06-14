@@ -21,6 +21,7 @@ public class Transaction {
     private Long categoryId;
     private Long accountId;
     private Long recurrenceRuleId;
+    private Long linkedTransactionId;
     private BigDecimal amount;
     private String currency;
     private BigDecimal convertedAmount;

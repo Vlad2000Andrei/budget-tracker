@@ -231,6 +231,7 @@
 
 .positive { color: var(--md-success); }
 .negative { color: var(--md-error); }
+.neutralAmount { color: var(--md-on-surface-variant); }
 
 .rowBottom {
   display: flex;
@@ -262,6 +263,33 @@
 .type_INCOME  { background: var(--md-success-container);  color: var(--md-on-success-container); }
 .type_EXPENSE { background: var(--md-error-container);    color: var(--md-on-error-container); }
 .type_SAVINGS { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+.type_MOVE    { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+
+.rowIconSvg {
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-surface-container);
+  border-radius: 50%;
+  color: var(--md-on-surface-variant);
+  flex-shrink: 0;
+}
+
+.toastIconSvg {
+  font-size: 28px;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-surface-container);
+  border-radius: 50%;
+  color: var(--md-on-surface-variant);
+  flex-shrink: 0;
+}
 
 /* ── Row Button (clickable) ─────────────────────── */
 .rowBtn {

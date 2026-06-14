@@ -1,6 +1,6 @@
 package com.budgettracker.backend.dto;
 
-import com.budgettracker.backend.jooq.enums.CategoryType;
+import com.budgettracker.backend.jooq.enums.SavingsTransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,22 +13,20 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TransactionDto {
+public class SavingsTransactionDto {
     private Long id;
-    private Long categoryId;
-    private Long accountId;
-    private Long recurrenceRuleId;
-    private Long linkedTransactionId;
+    private Long savingsGoalId;
+    private Long transactionId;
     private Long fromAccountId;
+    private String fromAccountName;
     private Long toAccountId;
+    private String toAccountName;
+    private SavingsTransactionType type;
     private BigDecimal amount;
     private String currency;
     private BigDecimal convertedAmount;
-    private BigDecimal exchangeRate;
-    private String type;
-    private String notes;
+    private String convertedCurrency;
     private LocalDateTime date;
+    private String notes;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private RecurrenceRuleDto recurrenceRule;
 }

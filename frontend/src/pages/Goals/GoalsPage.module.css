@@ -718,3 +718,320 @@
     display: none;
   }
 }
+
+/* ── Savings Deposit / Withdraw quick-action buttons ── */
+.savingsActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.txBtn {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: var(--md-shape-button);
+  font-size: var(--md-label-medium-size, 12px);
+  font-weight: 600;
+  font-family: var(--md-font-family);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all var(--md-duration-short) var(--md-easing-standard);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.txBtnDeposit {
+  background-color: var(--md-tertiary-container);
+  color: var(--md-on-tertiary-container);
+  border-color: var(--md-tertiary);
+}
+
+.txBtnDeposit:hover {
+  background-color: var(--md-tertiary);
+  color: var(--md-on-tertiary);
+  box-shadow: var(--md-elevation-1);
+}
+
+.txBtnWithdraw {
+  background-color: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
+  border-color: var(--md-outline-variant);
+}
+
+.txBtnWithdraw:hover:not(:disabled) {
+  background-color: var(--md-error-container);
+  color: var(--md-error);
+  border-color: var(--md-error);
+}
+
+.txBtnWithdraw:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.txBtnHistory {
+  background-color: transparent;
+  color: var(--md-on-surface-variant);
+  border-color: var(--md-outline-variant);
+}
+
+.txBtnHistory:hover {
+  background-color: var(--md-surface-container-high);
+}
+
+.txBtnHistoryActive {
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  border-color: var(--md-primary);
+}
+
+/* ── Transaction History Panel ── */
+.historyPanel {
+  background-color: var(--md-surface-container);
+  border-radius: var(--md-shape-medium);
+  padding: 12px;
+  border: 1px solid var(--md-outline-variant);
+  animation: fadeIn 180ms var(--md-easing-standard);
+}
+
+.historyLoading,
+.historyEmpty {
+  font-size: var(--md-body-small-size);
+  color: var(--md-on-surface-variant);
+  text-align: center;
+  padding: 8px 0;
+  margin: 0;
+}
+
+.historyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.historyItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.historyTypeBadge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.historyDeposit {
+  background-color: var(--md-tertiary-container);
+  color: var(--md-on-tertiary-container);
+}
+
+.historyWithdraw {
+  background-color: var(--md-error-container);
+  color: var(--md-error);
+}
+
+.historyDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.historyAmt {
+  font-size: var(--md-body-medium-size);
+  font-weight: 600;
+  color: var(--md-on-surface);
+}
+
+.historyMeta {
+  font-size: var(--md-body-small-size);
+  color: var(--md-on-surface-variant);
+}
+
+.historyNotes {
+  font-size: var(--md-body-small-size);
+  color: var(--md-on-surface-variant);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Savings Transaction Modal ── */
+.txModal {
+  width: 100%;
+  max-width: 500px;
+  background: var(--md-surface);
+  border-radius: var(--md-shape-bottom-sheet) var(--md-shape-bottom-sheet) 0 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--md-elevation-5);
+  animation: toastIn 280ms var(--md-easing-decelerate);
+  gap: 16px;
+}
+
+.txModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--md-outline-variant);
+  padding-bottom: 12px;
+}
+
+.txTypeToggle {
+  display: flex;
+  gap: 0;
+  border-radius: var(--md-shape-button);
+  overflow: hidden;
+  border: 1.5px solid var(--md-outline-variant);
+}
+
+.txToggleBtn {
+  padding: 8px 18px;
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  font-family: var(--md-font-family);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--md-on-surface-variant);
+  transition: all var(--md-duration-short) var(--md-easing-standard);
+}
+
+.txToggleDeposit {
+  background-color: var(--md-tertiary);
+  color: var(--md-on-tertiary);
+}
+
+.txToggleWithdraw {
+  background-color: var(--md-error);
+  color: var(--md-on-error);
+}
+
+.txModalContext {
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface-variant);
+  margin: 0;
+}
+
+.formRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* Deposit / Withdraw primary action buttons */
+.btnDeposit {
+  background-color: var(--md-tertiary);
+  color: var(--md-on-tertiary);
+}
+
+.btnDeposit:hover:not(:disabled) {
+  filter: brightness(0.9);
+  box-shadow: var(--md-elevation-1);
+}
+
+.btnDeposit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnWithdraw {
+  background-color: var(--md-error);
+  color: var(--md-on-error);
+}
+
+.btnWithdraw:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--md-error) 85%, black 15%);
+  box-shadow: var(--md-elevation-1);
+}
+
+.btnWithdraw:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Savings Transaction Modal (bottom-sheet card) ── */
+.txModal {
+  width: 100%;
+  max-width: 520px;
+  background: var(--md-surface);
+  border-radius: var(--md-shape-bottom-sheet) var(--md-shape-bottom-sheet) 0 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--md-elevation-5);
+  animation: toastIn 280ms var(--md-easing-decelerate);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.txModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--md-outline-variant);
+  padding-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.txTypeToggle {
+  display: flex;
+  border-radius: var(--md-shape-button);
+  overflow: hidden;
+  border: 1.5px solid var(--md-outline-variant);
+}
+
+.txToggleBtn {
+  padding: 8px 20px;
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  font-family: var(--md-font-family);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--md-on-surface-variant);
+  transition: all var(--md-duration-short) var(--md-easing-standard);
+}
+
+.txToggleDeposit {
+  background-color: var(--md-tertiary);
+  color: var(--md-on-tertiary);
+}
+
+.txToggleWithdraw {
+  background-color: var(--md-error);
+  color: var(--md-on-error);
+}
+
+.txModalContext {
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface-variant);
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.formRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}

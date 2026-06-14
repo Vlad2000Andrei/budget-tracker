@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import AddTransactionModal from '../AddTransactionModal/AddTransactionModal';
 import styles from './TransactionLog.module.css';
 
-const TYPE_FILTER_OPTIONS = ['All', 'INCOME', 'EXPENSE', 'SAVINGS'];
+const TYPE_FILTER_OPTIONS = ['All', 'INCOME', 'EXPENSE', 'SAVINGS', 'MOVE'];
 
 function fmt(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -18,7 +18,7 @@ function fmt(amount, currency = 'USD') {
 function TypeBadge({ type }) {
   return (
     <span className={`${styles.typeBadge} ${styles[`type_${type}`]}`}>
-      {type === 'INCOME' ? 'Income' : type === 'EXPENSE' ? 'Expense' : 'Savings'}
+      {type === 'INCOME' ? 'Income' : type === 'EXPENSE' ? 'Expense' : type === 'SAVINGS' ? 'Savings' : 'Move'}
     </span>
   );
 }
@@ -50,7 +50,8 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
   const [selectedDeleteMode, setSelectedDeleteMode] = useState('THIS_ONLY');
   const backdropRef = useRef(null);
 
-  const category = categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦' };
+  const isMove = t.type === 'MOVE';
+  const category = !isMove ? (categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦' }) : null;
   const accountName = t.accountId ? accountsMap[t.accountId] : null;
   const isIncome = t.type === 'INCOME';
   const isSavings = t.type === 'SAVINGS';
@@ -95,10 +96,20 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
         {/* Header */}
         <div className={styles.toastHeader}>
           <div className={styles.toastHeaderLeft}>
-            <span className={styles.toastIcon} aria-hidden="true">{category.icon}</span>
+            {isMove ? (
+              <span className={styles.toastIconSvg} aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+                  <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
+                </svg>
+              </span>
+            ) : (
+              <span className={styles.toastIcon} aria-hidden="true">{category.icon}</span>
+            )}
             <div>
               <div className={styles.toastCategory}>
-                {category.breadcrumb || category.name}
+                {isMove 
+                  ? `Move: ${accountsMap[t.fromAccountId] || 'Unknown'} → ${accountsMap[t.toAccountId] || 'Unknown'}`
+                  : (category.breadcrumb || category.name)}
                 {t.recurrenceRuleId && (
                   <span className={styles.recurringBadge}>
                     <RecurringIcon />
@@ -117,12 +128,12 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
 
         {/* Amount */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-          <div className={`${styles.toastAmount} ${isPositive ? styles.positive : styles.negative}`}>
-            {isPositive ? '+' : '−'}{fmt(isMultiCurrency ? t.convertedAmount : t.amount, isMultiCurrency ? defaultCurrency : t.currency)}
+          <div className={`${styles.toastAmount} ${isMove ? styles.neutralAmount : (isPositive ? styles.positive : styles.negative)}`}>
+            {isMove ? '' : (isPositive ? '+' : '−')}{fmt(isMultiCurrency ? t.convertedAmount : t.amount, isMultiCurrency ? defaultCurrency : t.currency)}
           </div>
           {isMultiCurrency && (
             <div style={{ fontSize: '14px', color: 'var(--md-outline)', fontWeight: '500' }}>
-              {isPositive ? '+' : '−'}{fmt(t.amount, t.currency)}
+              {isMove ? '' : (isPositive ? '+' : '−')}{fmt(t.amount, t.currency)}
             </div>
           )}
         </div>
@@ -133,11 +144,24 @@ function TransactionToast({ transaction: t, categoriesMap, accountsMap, onClose,
             <span className={styles.toastDetailLabel}>Date</span>
             <span className={styles.toastDetailValue}>{t.date.split('T')[0]}</span>
           </div>
-          {accountName && (
-            <div className={styles.toastDetailRow}>
-              <span className={styles.toastDetailLabel}>Account</span>
-              <span className={styles.toastDetailValue}>{accountName}</span>
-            </div>
+          {isMove ? (
+            <>
+              <div className={styles.toastDetailRow}>
+                <span className={styles.toastDetailLabel}>From Account</span>
+                <span className={styles.toastDetailValue}>{accountsMap[t.fromAccountId]}</span>
+              </div>
+              <div className={styles.toastDetailRow}>
+                <span className={styles.toastDetailLabel}>To Account</span>
+                <span className={styles.toastDetailValue}>{accountsMap[t.toAccountId]}</span>
+              </div>
+            </>
+          ) : (
+            accountName && (
+              <div className={styles.toastDetailRow}>
+                <span className={styles.toastDetailLabel}>Account</span>
+                <span className={styles.toastDetailValue}>{accountName}</span>
+              </div>
+            )
           )}
           {t.currency && (
             <div className={styles.toastDetailRow}>
@@ -309,8 +333,20 @@ function AllTab({ categoriesMap, accountsMap }) {
 
   const filtered = transactions.filter((t) => {
     if (typeFilter !== 'All' && t.type !== typeFilter) return false;
-    const catName = categoriesMap[t.categoryId]?.breadcrumb || categoriesMap[t.categoryId]?.name || '';
-    if (search && !catName.toLowerCase().includes(search.toLowerCase())) return false;
+    const isMove = t.type === 'MOVE';
+    if (search) {
+      const query = search.toLowerCase();
+      if (isMove) {
+        const fromName = accountsMap[t.fromAccountId]?.toLowerCase() || '';
+        const toName = accountsMap[t.toAccountId]?.toLowerCase() || '';
+        const notes = t.notes?.toLowerCase() || '';
+        if (!fromName.includes(query) && !toName.includes(query) && !notes.includes(query)) return false;
+      } else {
+        const catName = (categoriesMap[t.categoryId]?.breadcrumb || categoriesMap[t.categoryId]?.name || '').toLowerCase();
+        const notes = t.notes?.toLowerCase() || '';
+        if (!catName.includes(query) && !notes.includes(query)) return false;
+      }
+    }
     return true;
   });
 
@@ -352,7 +388,8 @@ function AllTab({ categoriesMap, accountsMap }) {
             <div className={styles.empty}>No transactions found.</div>
           )}
           {filtered.map((t) => {
-            const category = categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦' };
+            const isMove = t.type === 'MOVE';
+            const category = !isMove ? (categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦' }) : null;
             const accountName = t.accountId ? accountsMap[t.accountId] : null;
             const isIncome = t.type === 'INCOME';
             const isSavings = t.type === 'SAVINGS';
@@ -361,18 +398,32 @@ function AllTab({ categoriesMap, accountsMap }) {
             const isPositive = isIncome || isPositiveSavings;
             const isMultiCurrency = t.currency && t.currency !== defaultCurrency;
 
+            const fromAccountName = isMove ? accountsMap[t.fromAccountId] : null;
+            const toAccountName = isMove ? accountsMap[t.toAccountId] : null;
+            const rowLabel = isMove 
+              ? `Move: ${fromAccountName || 'Unknown'} → ${toAccountName || 'Unknown'}`
+              : (category.breadcrumb || category.name);
+
             return (
               <button
                 key={t.id}
                 className={styles.rowBtn}
                 onClick={() => setSelectedTx(t)}
-                aria-label={`View details for ${category.name} transaction`}
+                aria-label={`View details for ${isMove ? 'move' : category.name} transaction`}
               >
-                <span className={styles.rowIcon} aria-hidden="true">{category.icon}</span>
+                {isMove ? (
+                  <span className={styles.rowIconSvg} aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                      <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
+                    </svg>
+                  </span>
+                ) : (
+                  <span className={styles.rowIcon} aria-hidden="true">{category.icon}</span>
+                )}
                 <div className={styles.rowMain}>
                   <div className={styles.rowTop}>
                     <span className={styles.rowCategory}>
-                      {category.breadcrumb || category.name}
+                      {rowLabel}
                       {t.recurrenceRuleId && (
                         <span className={styles.recurringBadge}>
                           <RecurringIcon />
@@ -380,19 +431,19 @@ function AllTab({ categoriesMap, accountsMap }) {
                       )}
                     </span>
                     <div className={styles.amountCol}>
-                      <span className={`${styles.rowAmount} ${isPositive ? styles.positive : styles.negative}`}>
-                        {isPositive ? '+' : '−'}{fmt(isMultiCurrency ? t.convertedAmount : t.amount, isMultiCurrency ? defaultCurrency : t.currency)}
+                      <span className={`${styles.rowAmount} ${isMove ? styles.neutralAmount : (isPositive ? styles.positive : styles.negative)}`}>
+                        {isMove ? '' : (isPositive ? '+' : '−')}{fmt(isMultiCurrency ? t.convertedAmount : t.amount, isMultiCurrency ? defaultCurrency : t.currency)}
                       </span>
                       {isMultiCurrency && (
                         <span className={styles.rowAmountSub}>
-                          {isPositive ? '+' : '−'}{fmt(t.amount, t.currency)}
+                          {isMove ? '' : (isPositive ? '+' : '−')}{fmt(t.amount, t.currency)}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className={styles.rowBottom}>
                     <TypeBadge type={t.type} />
-                    {accountName && <span className={styles.rowMeta}>{accountName}</span>}
+                    {!isMove && accountName && <span className={styles.rowMeta}>{accountName}</span>}
                     <span className={styles.rowDate}>{t.date.split('T')[0]}</span>
                     {t.notes && <span className={styles.rowNotes} title={t.notes}>📝</span>}
                   </div>

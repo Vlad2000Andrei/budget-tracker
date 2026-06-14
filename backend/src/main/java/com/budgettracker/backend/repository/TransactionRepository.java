@@ -34,7 +34,7 @@ public class TransactionRepository {
                 .map(this::mapRecordToTransaction);
     }
 
-    public List<Transaction> findAll(Long userId, Long accountId, Long categoryId, LocalDate startDate, LocalDate endDate, CategoryType type) {
+    public List<Transaction> findAll(Long userId, Long accountId, Long categoryId, LocalDate startDate, LocalDate endDate, String type) {
         List<Condition> conditions = new ArrayList<>();
         conditions.add(TRANSACTIONS.USER_ID.eq(userId));
 
@@ -50,8 +50,18 @@ public class TransactionRepository {
         if (endDate != null) {
             conditions.add(TRANSACTIONS.DATE.lt(endDate.plusDays(1).atStartOfDay()));
         }
-        if (type != null) {
-            conditions.add(TRANSACTIONS.TYPE.eq(type));
+        if (type != null && !type.isBlank()) {
+            if ("MOVE".equalsIgnoreCase(type)) {
+                conditions.add(TRANSACTIONS.LINKED_TRANSACTION_ID.isNotNull());
+            } else {
+                try {
+                    CategoryType catType = CategoryType.valueOf(type.toUpperCase());
+                    conditions.add(TRANSACTIONS.TYPE.eq(catType));
+                    conditions.add(TRANSACTIONS.LINKED_TRANSACTION_ID.isNull());
+                } catch (IllegalArgumentException e) {
+                    // ignore
+                }
+            }
         }
 
         return dsl.selectFrom(TRANSACTIONS)
@@ -83,6 +93,7 @@ public class TransactionRepository {
                     .set(TRANSACTIONS.CATEGORY_ID, transaction.getCategoryId())
                     .set(TRANSACTIONS.ACCOUNT_ID, transaction.getAccountId())
                     .set(TRANSACTIONS.RECURRENCE_RULE_ID, transaction.getRecurrenceRuleId())
+                    .set(TRANSACTIONS.LINKED_TRANSACTION_ID, transaction.getLinkedTransactionId())
                     .set(TRANSACTIONS.AMOUNT, transaction.getAmount())
                     .set(TRANSACTIONS.CURRENCY, transaction.getCurrency())
                     .set(TRANSACTIONS.CONVERTED_AMOUNT, transaction.getConvertedAmount())
@@ -101,6 +112,7 @@ public class TransactionRepository {
                     .set(TRANSACTIONS.CATEGORY_ID, transaction.getCategoryId())
                     .set(TRANSACTIONS.ACCOUNT_ID, transaction.getAccountId())
                     .set(TRANSACTIONS.RECURRENCE_RULE_ID, transaction.getRecurrenceRuleId())
+                    .set(TRANSACTIONS.LINKED_TRANSACTION_ID, transaction.getLinkedTransactionId())
                     .set(TRANSACTIONS.AMOUNT, transaction.getAmount())
                     .set(TRANSACTIONS.CURRENCY, transaction.getCurrency())
                     .set(TRANSACTIONS.CONVERTED_AMOUNT, transaction.getConvertedAmount())
@@ -132,6 +144,34 @@ public class TransactionRepository {
                 .map(this::mapRecordToTransaction);
     }
 
+    @Transactional
+    public void updateLinkedTransactionId(Long id, Long linkedId) {
+        dsl.update(TRANSACTIONS)
+                .set(TRANSACTIONS.LINKED_TRANSACTION_ID, linkedId)
+                .where(TRANSACTIONS.ID.eq(id))
+                .execute();
+    }
+
+    @Transactional
+    public void clearLink(Long id) {
+        dsl.update(TRANSACTIONS)
+                .setNull(TRANSACTIONS.LINKED_TRANSACTION_ID)
+                .where(TRANSACTIONS.ID.eq(id))
+                .execute();
+    }
+
+    public List<Transaction> findByCategoryIds(Long userId, List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return dsl.selectFrom(TRANSACTIONS)
+                .where(TRANSACTIONS.USER_ID.eq(userId)
+                        .and(TRANSACTIONS.CATEGORY_ID.in(categoryIds)))
+                .orderBy(TRANSACTIONS.DATE.desc())
+                .fetch()
+                .map(this::mapRecordToTransaction);
+    }
+
     private Transaction mapRecordToTransaction(TransactionsRecord record) {
         if (record == null) {
             return null;
@@ -150,6 +190,7 @@ public class TransactionRepository {
                 .type(record.getType())
                 .notes(record.getNotes())
                 .date(record.getDate())
+                .linkedTransactionId(record.getLinkedTransactionId())
                 .createdAt(record.getCreatedAt())
                 .updatedAt(record.getUpdatedAt())
                 .build();

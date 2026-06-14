@@ -13,8 +13,10 @@ import com.budgettracker.backend.repository.CategoryRepository;
 import com.budgettracker.backend.repository.TransactionRepository;
 import com.budgettracker.backend.repository.UserRepository;
 import com.budgettracker.backend.jooq.enums.RecurrenceFrequency;
+import com.budgettracker.backend.jooq.enums.SavingsGoalType;
 import com.budgettracker.backend.model.RecurrenceRule;
 import com.budgettracker.backend.repository.RecurrenceRuleRepository;
+import com.budgettracker.backend.repository.SavingsGoalRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,6 +69,9 @@ public class TransactionControllerIntegrationTest {
 
     @Autowired
     private RecurrenceRuleRepository recurrenceRuleRepository;
+
+    @Autowired
+    private SavingsGoalRepository savingsGoalRepository;
 
     @Autowired
     private DSLContext dsl;
@@ -660,4 +665,179 @@ public class TransactionControllerIntegrationTest {
         Account updatedEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
         assertEquals(new BigDecimal("990.0000"), updatedEur.getBalance());
     }
+
+    @Test
+    public void testCreateTransfer_Success() throws Exception {
+        Account checkingAccount2 = accountRepository.save(Account.builder()
+                .userId(testUser.getId())
+                .name("EUR Checking 2")
+                .type(AccountType.CHECKING)
+                .balance(new BigDecimal("200.0000"))
+                .currency("EUR")
+                .build());
+
+        com.budgettracker.backend.dto.CreateTransferRequest request = com.budgettracker.backend.dto.CreateTransferRequest.builder()
+                .fromAccountId(eurAccount.getId())
+                .toAccountId(checkingAccount2.getId())
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .date(LocalDateTime.now())
+                .notes("Transfer EUR checking to EUR checking 2")
+                .build();
+
+        mockMvc.perform(post("/v1/transactions/transfer")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.amount", is(100.0)))
+                .andExpect(jsonPath("$.type", is("MOVE")))
+                .andExpect(jsonPath("$.linkedTransactionId", notNullValue()));
+
+        // Verify balance updates:
+        // EUR Checking: 1000 - 100 = 900
+        Account updatedEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("900.0000"), updatedEur.getBalance());
+
+        // EUR Checking 2: 200 + 100 = 300
+        Account updatedChecking2 = accountRepository.findById(checkingAccount2.getId()).orElseThrow();
+        assertEquals(new BigDecimal("300.0000"), updatedChecking2.getBalance());
+    }
+
+    @Test
+    public void testCreateTransfer_DifferentTypes_Fails() throws Exception {
+        com.budgettracker.backend.dto.CreateTransferRequest request = com.budgettracker.backend.dto.CreateTransferRequest.builder()
+                .fromAccountId(eurAccount.getId())
+                .toAccountId(ronAccount.getId()) // one CHECKING, one SAVINGS
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .date(LocalDateTime.now())
+                .notes("Transfer EUR checking to RON savings")
+                .build();
+
+        mockMvc.perform(post("/v1/transactions/transfer")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("Source and destination accounts must be of the same type")));
+    }
+
+    @Test
+    public void testDeleteTransfer_Cascades() throws Exception {
+        // Create two transactions manually and link them to simulate a transfer
+        Transaction t1 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .amount(new BigDecimal("50.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("50.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .build());
+
+        Transaction t2 = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(ronAccount.getId())
+                .amount(new BigDecimal("50.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("248.5000"))
+                .exchangeRate(new BigDecimal("4.970000"))
+                .type(CategoryType.INCOME)
+                .date(LocalDateTime.now())
+                .build());
+
+        transactionRepository.updateLinkedTransactionId(t1.getId(), t2.getId());
+        transactionRepository.updateLinkedTransactionId(t2.getId(), t1.getId());
+        t1.setLinkedTransactionId(t2.getId());
+
+        // Set initial balances to represent post-transaction balances
+        eurAccount.setBalance(new BigDecimal("950.0000"));
+        accountRepository.save(eurAccount);
+
+        ronAccount.setBalance(new BigDecimal("748.5000"));
+        accountRepository.save(ronAccount);
+
+        // Delete source transaction t1: Should automatically cascade and delete t2, and restore balances.
+        mockMvc.perform(delete("/v1/transactions/" + t1.getId())
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isNoContent());
+
+        // Verify both transactions are gone
+        assertFalse(transactionRepository.findById(t1.getId()).isPresent());
+        assertFalse(transactionRepository.findById(t2.getId()).isPresent());
+
+        // Verify balances restored:
+        // EUR Checking: 950 + 50 = 1000
+        Account restoredEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("1000.0000"), restoredEur.getBalance());
+
+        // RON Savings: 748.5000 - 248.5000 = 500
+        Account restoredRon = accountRepository.findById(ronAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("500.0000"), restoredRon.getBalance());
+    }
+
+    @Test
+    public void testCreateSavingsTransaction_NoGoal_Success() throws Exception {
+        Category customSavingsCat = categoryRepository.save(Category.builder()
+                .userId(testUser.getId())
+                .name("General Savings")
+                .type(CategoryType.SAVINGS)
+                .build());
+
+        com.budgettracker.backend.dto.CreateSavingsTransactionRequest request = com.budgettracker.backend.dto.CreateSavingsTransactionRequest.builder()
+                .fromAccountId(eurAccount.getId())
+                .toAccountId(ronAccount.getId())
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .type(com.budgettracker.backend.jooq.enums.SavingsTransactionType.DEPOSIT)
+                .date(LocalDateTime.now())
+                .categoryId(customSavingsCat.getId())
+                .build();
+
+        mockMvc.perform(post("/v1/transactions/savings")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.savingsGoalId", nullValue()))
+                .andExpect(jsonPath("$.amount", is(100.0)))
+                .andExpect(jsonPath("$.type", is("DEPOSIT")));
+    }
+
+    @Test
+    public void testCreateSavingsTransaction_NoGoal_AutoLinksToExistingGoal() throws Exception {
+        com.budgettracker.backend.model.SavingsGoal goal = savingsGoalRepository.save(com.budgettracker.backend.model.SavingsGoal.builder()
+                .userId(testUser.getId())
+                .categoryId(savingsCategory.getId())
+                .goalType(com.budgettracker.backend.jooq.enums.SavingsGoalType.ONE_OFF)
+                .targetAmount(new BigDecimal("5000.00"))
+                .currentAmount(BigDecimal.ZERO)
+                .build());
+
+        com.budgettracker.backend.dto.CreateSavingsTransactionRequest request = com.budgettracker.backend.dto.CreateSavingsTransactionRequest.builder()
+                .fromAccountId(eurAccount.getId())
+                .toAccountId(ronAccount.getId())
+                .amount(new BigDecimal("50.00"))
+                .currency("EUR")
+                .type(com.budgettracker.backend.jooq.enums.SavingsTransactionType.DEPOSIT)
+                .date(LocalDateTime.now())
+                .categoryId(savingsCategory.getId())
+                .build();
+
+        mockMvc.perform(post("/v1/transactions/savings")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.savingsGoalId", is(goal.getId().intValue())))
+                .andExpect(jsonPath("$.amount", is(50.0)));
+    }
 }
+

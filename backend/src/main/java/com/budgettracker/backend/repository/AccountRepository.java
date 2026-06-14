@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -73,6 +74,22 @@ public class AccountRepository {
             account.setUpdatedAt(now);
             return account;
         }
+    }
+
+    /**
+     * Atomically applies {@code delta} to an account's balance and returns the updated Account.
+     * A positive delta increases the balance; a negative delta decreases it.
+     */
+    @Transactional
+    public Account updateBalance(Long accountId, BigDecimal delta) {
+        LocalDateTime now = LocalDateTime.now();
+        dsl.update(ACCOUNTS)
+                .set(ACCOUNTS.BALANCE, ACCOUNTS.BALANCE.add(delta))
+                .set(ACCOUNTS.UPDATED_AT, now)
+                .where(ACCOUNTS.ID.eq(accountId))
+                .execute();
+        return findById(accountId)
+                .orElseThrow(() -> new IllegalStateException("Account not found after balance update: " + accountId));
     }
 
     @Transactional

@@ -12,7 +12,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 export default function AddTransactionModal({ onClose, transaction }) {
   const { user } = useAuth();
   const [form, setForm] = useState({
-    type: transaction?.type || 'EXPENSE',
+    type: transaction?.linkedTransactionId ? 'MOVE' : (transaction?.type || 'EXPENSE'),
     amount: transaction ? Math.abs(transaction.amount).toString() : '',
     currency: transaction?.currency || user?.defaultCurrency || 'USD',
     exchangeRate: transaction?.exchangeRate || '',
@@ -25,10 +25,13 @@ export default function AddTransactionModal({ onClose, transaction }) {
     interval: transaction?.recurrenceRule?.interval || 1,
     recurringStartDate: transaction?.recurrenceRule?.startDate || today(),
     endDate: transaction?.recurrenceRule?.endDate || '',
+    fromAccountId: transaction?.fromAccountId?.toString() || '',
+    toAccountId: transaction?.toAccountId?.toString() || '',
   });
 
   const [dbCategories, setDbCategories] = useState([]);
   const [dbAccounts, setDbAccounts] = useState([]);
+  const [dbSavingsGoals, setDbSavingsGoals] = useState([]);
   const [categorySearch, setCategorySearch] = useState('');
   const [notesExpanded, setNotesExpanded] = useState(!!transaction?.notes);
   const [saving, setSaving] = useState(false);
@@ -39,22 +42,51 @@ export default function AddTransactionModal({ onClose, transaction }) {
   const amountRef = useRef(null);
   const backdropRef = useRef(null);
 
-  // Fetch categories and accounts on mount
+  const formatCurrency = (amount, currency) => {
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
+    } catch (e) {
+      return (amount || 0).toFixed(2) + ' ' + currency;
+    }
+  };
+
+  // Fetch categories, accounts, and savings goals on mount
   useEffect(() => {
     async function loadData() {
       try {
-        const [catsRes, accountsRes] = await Promise.all([
+        const [catsRes, accountsRes, goalsRes] = await Promise.all([
           axiosInstance.get('/v1/categories'),
-          axiosInstance.get('/v1/accounts')
+          axiosInstance.get('/v1/accounts'),
+          axiosInstance.get('/v1/savings-goals')
         ]);
         setDbCategories(catsRes.data);
         setDbAccounts(accountsRes.data);
+        setDbSavingsGoals(goalsRes.data);
+
+        // If editing an existing SAVINGS transaction, find its from/to accounts
+        if (transaction && transaction.type === 'SAVINGS') {
+          const goal = goalsRes.data.find(g => g.categoryId === transaction.categoryId);
+          if (goal) {
+            const txsRes = await axiosInstance.get(`/v1/savings-goals/${goal.id}/transactions`);
+            const matchedSgTx = txsRes.data.find(t => t.transactionId === transaction.id);
+            if (matchedSgTx) {
+              setForm(f => ({
+                ...f,
+                fromAccountId: matchedSgTx.fromAccountId || '',
+                toAccountId: matchedSgTx.toAccountId || '',
+              }));
+              setSavingsAction(matchedSgTx.type);
+            }
+          }
+        }
+
+
       } catch (err) {
-        console.error("Failed to load categories/accounts in modal", err);
+        console.error("Failed to load data in transaction modal", err);
       }
     }
     loadData();
-  }, []);
+  }, [transaction]);
 
   // Update default currency when user info becomes available
   useEffect(() => {
@@ -104,13 +136,15 @@ export default function AddTransactionModal({ onClose, transaction }) {
     return result;
   }, [dbCategories]);
 
-  // Dynamically map accounts (stored as uppercase ACCOUNTS to match select element loop reference)
+  // Dynamically map accounts
   const ACCOUNTS = useMemo(() => {
     return dbAccounts
       .map(a => ({
         id: a.id,
         name: a.name,
         type: a.type,
+        currency: a.currency,
+        balance: a.balance,
       }))
       .sort((a, b) => {
         if (a.type === 'CHECKING' && b.type !== 'CHECKING') return -1;
@@ -132,17 +166,77 @@ export default function AddTransactionModal({ onClose, transaction }) {
   const showExchangeRate = form.currency !== (user?.defaultCurrency || 'USD');
 
   async function handleSave() {
-    if (!form.amount || !form.categoryId) return;
+    if (!form.amount || (form.type !== 'MOVE' && !form.categoryId)) return;
 
     setSaving(true);
     setSaveError(null);
 
+    if (form.type === 'MOVE') {
+      if (!form.fromAccountId || !form.toAccountId) {
+        setSaveError("Both From and To accounts are required for moves.");
+        setSaving(false);
+        return;
+      }
+
+      const payload = {
+        fromAccountId: parseInt(form.fromAccountId, 10),
+        toAccountId: parseInt(form.toAccountId, 10),
+        amount: Math.abs(parseFloat(form.amount)),
+        currency: form.currency,
+        date: new Date(form.date).toISOString(),
+        notes: form.notes || undefined,
+      };
+
+      try {
+        if (transaction) {
+          await axiosInstance.delete(`/v1/transactions/${transaction.id}`);
+        }
+        await axiosInstance.post('/v1/transactions/transfer', payload);
+        window.dispatchEvent(new Event('transaction-added'));
+        onClose();
+      } catch (err) {
+        setSaveError(err.response?.data?.message || err.message);
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (form.type === 'SAVINGS') {
+      if (!form.fromAccountId || !form.toAccountId) {
+        setSaveError("Both From and To accounts are required for savings transactions.");
+        setSaving(false);
+        return;
+      }
+
+      const payload = {
+        fromAccountId: parseInt(form.fromAccountId, 10),
+        toAccountId: parseInt(form.toAccountId, 10),
+        amount: Math.abs(parseFloat(form.amount)),
+        currency: form.currency,
+        type: savingsAction,
+        date: new Date(form.date).toISOString(),
+        notes: form.notes || undefined,
+        categoryId: form.categoryId ? parseInt(form.categoryId, 10) : undefined,
+      };
+
+      try {
+        if (transaction) {
+          await axiosInstance.delete(`/v1/transactions/${transaction.id}`);
+        }
+        await axiosInstance.post('/v1/transactions/savings', payload);
+        window.dispatchEvent(new Event('transaction-added'));
+        onClose();
+      } catch (err) {
+        setSaveError(err.response?.data?.message || err.message);
+        setSaving(false);
+      }
+      return;
+    }
+
     const payload = {
       categoryId: form.categoryId,
       accountId: form.accountId ? parseInt(form.accountId, 10) : undefined,
-      amount: form.type === 'SAVINGS' && savingsAction === 'WITHDRAWAL'
-        ? -Math.abs(parseFloat(form.amount))
-        : Math.abs(parseFloat(form.amount)),
+      amount: Math.abs(parseFloat(form.amount)),
       currency: form.currency,
       type: form.type,
       notes: form.notes || undefined,
@@ -172,7 +266,10 @@ export default function AddTransactionModal({ onClose, transaction }) {
     }
   }
 
-  const canSave = form.amount && form.categoryId && !saving;
+  const canSave = form.amount && !saving && (
+    (form.type === 'MOVE' && form.fromAccountId && form.toAccountId) ||
+    (form.type !== 'MOVE' && form.categoryId && (form.type !== 'SAVINGS' || (form.fromAccountId && form.toAccountId)))
+  );
 
   return (
     <div
@@ -203,16 +300,70 @@ export default function AddTransactionModal({ onClose, transaction }) {
           {/* ── Type toggle ────────────────────────────────────── */}
           <div className={styles.field}>
             <div className={styles.typeToggle} role="group" aria-label="Transaction type">
-              {['EXPENSE', 'INCOME', 'SAVINGS'].map((t) => (
-                <button
-                  key={t}
-                  className={`${styles.typeBtn} ${form.type === t ? styles[`typeBtnActive_${t}`] : ''}`}
-                  onClick={() => { set('type', t); set('categoryId', null); setCategorySearch(''); setSavingsAction('DEPOSIT'); }}
-                  aria-pressed={form.type === t}
-                >
-                  {t === 'EXPENSE' ? '↓ Expense' : t === 'INCOME' ? '↑ Income' : '🏦 Savings'}
-                </button>
-              ))}
+              {['EXPENSE', 'INCOME', 'SAVINGS', 'MOVE'].map((t) => {
+                const getIcon = () => {
+                  switch (t) {
+                    case 'EXPENSE':
+                      return (
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                          <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"/>
+                        </svg>
+                      );
+                    case 'INCOME':
+                      return (
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                          <path d="M4 12l1.41 1.41L11 6.83V20h2V6.83l5.58 5.59L20 12l-8-8-8 8z"/>
+                        </svg>
+                      );
+                    case 'SAVINGS':
+                      return (
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                          <path d="M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z"/>
+                        </svg>
+                      );
+                    case 'MOVE':
+                      return (
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                          <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
+                        </svg>
+                      );
+                    default:
+                      return null;
+                  }
+                };
+
+                const getLabel = () => {
+                  switch (t) {
+                    case 'EXPENSE': return 'Expense';
+                    case 'INCOME': return 'Income';
+                    case 'SAVINGS': return 'Savings';
+                    case 'MOVE': return 'Move';
+                    default: return '';
+                  }
+                };
+
+                return (
+                  <button
+                    key={t}
+                    className={`${styles.typeBtn} ${form.type === t ? styles[`typeBtnActive_${t}`] : ''}`}
+                    onClick={() => {
+                      setForm(f => ({
+                        ...f,
+                        type: t,
+                        categoryId: null,
+                        fromAccountId: '',
+                        toAccountId: '',
+                      }));
+                      setCategorySearch('');
+                      setSavingsAction('DEPOSIT');
+                    }}
+                    aria-pressed={form.type === t}
+                  >
+                    {getIcon()}
+                    <span>{getLabel()}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -225,7 +376,16 @@ export default function AddTransactionModal({ onClose, transaction }) {
                   <button
                     key={act}
                     className={`${styles.typeBtn} ${savingsAction === act ? styles[`typeBtnActive_${act}`] : ''}`}
-                    onClick={() => setSavingsAction(act)}
+                    onClick={() => {
+                      setSavingsAction(act);
+                      if (form.fromAccountId && form.toAccountId) {
+                        setForm(f => ({
+                          ...f,
+                          fromAccountId: f.toAccountId,
+                          toAccountId: f.fromAccountId
+                        }));
+                      }
+                    }}
                     aria-pressed={savingsAction === act}
                   >
                     {act === 'DEPOSIT' ? '🏦 Deposit' : '💸 Withdrawal'}
@@ -286,61 +446,63 @@ export default function AddTransactionModal({ onClose, transaction }) {
           )}
 
           {/* ── Category ──────────────────────────────────────── */}
-          <div className={styles.field}>
-            <label className={styles.label}>Category</label>
+          {form.type !== 'MOVE' && (
+            <div className={styles.field}>
+              <label className={styles.label}>Category</label>
 
-            {/* Recent chips */}
-            <div className={styles.chips} role="group" aria-label="Recent categories">
-              {recentChips.map((c) => (
-                <button
-                  key={c.id}
-                  className={`${styles.chip} ${form.categoryId === c.id ? styles.chipActive : ''}`}
-                  onClick={() => { set('categoryId', c.id); setCategorySearch(''); }}
-                  aria-pressed={form.categoryId === c.id}
-                >
-                  {c.icon} {c.name}
-                </button>
-              ))}
-            </div>
-
-            {/* Search */}
-            <input
-              type="search"
-              placeholder="Search all categories…"
-              className={styles.input}
-              value={categorySearch}
-              onChange={(e) => setCategorySearch(e.target.value)}
-              aria-label="Search categories"
-            />
-
-            {/* Search results */}
-            {searchResults.length > 0 && (
-              <ul className={styles.searchResults} role="listbox" aria-label="Category suggestions">
-                {searchResults.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      className={styles.searchResultItem}
-                      onClick={() => { set('categoryId', c.id); setCategorySearch(''); }}
-                      role="option"
-                      aria-selected={form.categoryId === c.id}
-                    >
-                      <span>{c.icon}</span>
-                      <span>
-                        {c.parentName && <span className={styles.breadcrumb}>{c.parentName} › </span>}
-                        {c.name}
-                      </span>
-                    </button>
-                  </li>
+              {/* Recent chips */}
+              <div className={styles.chips} role="group" aria-label="Recent categories">
+                {recentChips.map((c) => (
+                  <button
+                    key={c.id}
+                    className={`${styles.chip} ${form.categoryId === c.id ? styles.chipActive : ''}`}
+                    onClick={() => { set('categoryId', c.id); setCategorySearch(''); }}
+                    aria-pressed={form.categoryId === c.id}
+                  >
+                    {c.icon} {c.name}
+                  </button>
                 ))}
-              </ul>
-            )}
+              </div>
 
-            {selectedCategory && (
-              <p className={styles.selectedCategory}>
-                ✓ {selectedCategory.icon} {selectedCategory.parentName ? `${selectedCategory.parentName} › ` : ''}{selectedCategory.name}
-              </p>
-            )}
-          </div>
+              {/* Search */}
+              <input
+                type="search"
+                placeholder="Search all categories…"
+                className={styles.input}
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                aria-label="Search categories"
+              />
+
+              {/* Search results */}
+              {searchResults.length > 0 && (
+                <ul className={styles.searchResults} role="listbox" aria-label="Category suggestions">
+                  {searchResults.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        className={styles.searchResultItem}
+                        onClick={() => { set('categoryId', c.id); setCategorySearch(''); }}
+                        role="option"
+                        aria-selected={form.categoryId === c.id}
+                      >
+                        <span>{c.icon}</span>
+                        <span>
+                          {c.parentName && <span className={styles.breadcrumb}>{c.parentName} › </span>}
+                          {c.name}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {selectedCategory && (
+                <p className={styles.selectedCategory}>
+                  ✓ {selectedCategory.icon} {selectedCategory.parentName ? `${selectedCategory.parentName} › ` : ''}{selectedCategory.name}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* ── Date ──────────────────────────────────────────── */}
           <div className={styles.field}>
@@ -354,31 +516,114 @@ export default function AddTransactionModal({ onClose, transaction }) {
             />
           </div>
 
-          {/* ── Account (optional) ────────────────────────────── */}
-          <div className={styles.field}>
-            <span className={styles.label}>
-              Account <span className={styles.labelHint}>optional</span>
-            </span>
-            <div className={styles.chips} role="group" aria-label="Account selection">
-              {ACCOUNTS.map((a) => {
-                const isSelected = form.accountId == a.id;
-                return (
-                  <button
-                    key={a.id}
-                    type="button"
-                    className={`${styles.chip} ${isSelected ? styles.chipActive : ''}`}
-                    onClick={() => set('accountId', isSelected ? '' : a.id)}
-                    aria-pressed={isSelected}
+          {/* ── Account Selector(s) ────────────────────────────── */}
+          {(form.type === 'SAVINGS' || form.type === 'MOVE') ? (
+            <>
+              {/* From Account */}
+              <div className={styles.field}>
+                <label htmlFor="modal-from-account" className={styles.label}>
+                  From Account <span style={{ color: 'var(--md-error)' }}>*</span>
+                </label>
+                {ACCOUNTS.length === 0 ? (
+                  <p className={styles.labelHint}>⚠️ No accounts found. Please create an account first.</p>
+                ) : (
+                  <select
+                    id="modal-from-account"
+                    className={styles.select}
+                    value={form.fromAccountId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForm(f => {
+                        const next = { ...f, fromAccountId: val };
+                        if (val && val === f.toAccountId) {
+                          next.toAccountId = '';
+                        }
+                        if (f.type === 'MOVE' && val && f.toAccountId) {
+                          const srcAcc = ACCOUNTS.find(a => a.id.toString() === val);
+                          const destAcc = ACCOUNTS.find(a => a.id.toString() === f.toAccountId.toString());
+                          if (srcAcc && destAcc && srcAcc.type !== destAcc.type) {
+                            next.toAccountId = '';
+                          }
+                        }
+                        return next;
+                      });
+                    }}
+                    required
                   >
-                    {a.type === 'CHECKING' ? '💳' : '💰'} {a.name}
-                  </button>
-                );
-              })}
-              {ACCOUNTS.length === 0 && (
-                <span className={styles.labelHint}>No accounts available</span>
-              )}
+                    <option value="">-- Select Source Account --</option>
+                    {ACCOUNTS
+                      .filter(a => form.type === 'MOVE' ? true : (savingsAction === 'DEPOSIT' ? a.type !== 'SAVINGS' : a.type === 'SAVINGS'))
+                      .map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.currency} — Balance: {formatCurrency(a.balance, a.currency)})
+                        </option>
+                      ))}
+                  </select>
+                )}
+              </div>
+
+              {/* To Account */}
+              <div className={styles.field}>
+                <label htmlFor="modal-to-account" className={styles.label}>
+                  To Account <span style={{ color: 'var(--md-error)' }}>*</span>
+                </label>
+                {ACCOUNTS.length < 2 ? (
+                  <p className={styles.labelHint}>⚠️ You need at least 2 accounts to perform a transfer.</p>
+                ) : (
+                  <select
+                    id="modal-to-account"
+                    className={styles.select}
+                    value={form.toAccountId}
+                    onChange={(e) => set('toAccountId', e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Destination Account --</option>
+                    {ACCOUNTS
+                      .filter(a => a.id.toString() !== form.fromAccountId?.toString())
+                      .filter(a => {
+                        if (form.type === 'MOVE') {
+                          if (!form.fromAccountId) return true;
+                          const fromAcc = ACCOUNTS.find(src => src.id.toString() === form.fromAccountId.toString());
+                          return fromAcc ? a.type === fromAcc.type : true;
+                        } else {
+                          return savingsAction === 'DEPOSIT' ? a.type === 'SAVINGS' : a.type !== 'SAVINGS';
+                        }
+                      })
+                      .map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.currency} — Balance: {formatCurrency(a.balance, a.currency)})
+                        </option>
+                      ))}
+                  </select>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className={styles.field}>
+              <span className={styles.label}>
+                Account <span className={styles.labelHint}>optional</span>
+              </span>
+              <div className={styles.chips} role="group" aria-label="Account selection">
+                {ACCOUNTS.map((a) => {
+                  const isSelected = form.accountId == a.id;
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className={`${styles.chip} ${isSelected ? styles.chipActive : ''}`}
+                      onClick={() => set('accountId', isSelected ? '' : a.id)}
+                      aria-pressed={isSelected}
+                    >
+                      {a.type === 'CHECKING' ? '💳' : '💰'} {a.name}
+                    </button>
+                  );
+                })}
+                {ACCOUNTS.length === 0 && (
+                  <span className={styles.labelHint}>No accounts available</span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ── Notes (collapsible) ───────────────────────────── */}
           <div className={styles.field}>

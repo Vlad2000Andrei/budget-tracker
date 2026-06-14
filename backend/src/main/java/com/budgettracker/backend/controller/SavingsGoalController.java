@@ -1,7 +1,9 @@
 package com.budgettracker.backend.controller;
 
 import com.budgettracker.backend.dto.CreateSavingsGoalRequest;
+import com.budgettracker.backend.dto.CreateSavingsTransactionRequest;
 import com.budgettracker.backend.dto.SavingsGoalDto;
+import com.budgettracker.backend.dto.SavingsTransactionDto;
 import com.budgettracker.backend.dto.UpdateSavingsGoalRequest;
 import com.budgettracker.backend.model.User;
 import com.budgettracker.backend.service.SavingsGoalService;
@@ -60,5 +62,26 @@ public class SavingsGoalController {
     public ResponseEntity<Void> deleteSavingsGoal(@PathVariable Long goalId, User user) {
         savingsGoalService.deleteSavingsGoal(goalId, user);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{goalId}/transactions")
+    public ResponseEntity<SavingsTransactionDto> createSavingsTransaction(
+            @PathVariable Long goalId,
+            @Valid @RequestBody CreateSavingsTransactionRequest request,
+            User user) {
+        SavingsTransactionDto created = savingsGoalService.createSavingsTransaction(goalId, request, user);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @GetMapping("/{goalId}/transactions")
+    public ResponseEntity<List<SavingsTransactionDto>> getSavingsTransactions(
+            @PathVariable Long goalId,
+            User user) {
+        List<SavingsTransactionDto> transactions = savingsGoalService.getSavingsTransactions(goalId, user);
+        return ResponseEntity.ok(transactions);
     }
 }
