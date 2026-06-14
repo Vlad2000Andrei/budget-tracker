@@ -1,5 +1,6 @@
 package com.budgettracker.backend.dto;
 
+import com.budgettracker.backend.jooq.enums.SavingsGoalType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,9 @@ public class CreateSavingsGoalRequest {
 
     @NotNull(message = "Category ID is required")
     private Long categoryId;
+
+    @NotNull(message = "Goal type is required")
+    private SavingsGoalType goalType;
 
     @NotNull(message = "Target amount is required")
     @DecimalMin(value = "0.01", message = "Target amount must be greater than or equal to 0.01")

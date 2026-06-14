@@ -88,8 +88,10 @@ public class BudgetRepository {
     public boolean hasOverlappingBudget(Long userId, Long categoryId, LocalDate startDate, LocalDate endDate, Long excludeId) {
         var condition = BUDGETS.USER_ID.eq(userId)
                 .and(BUDGETS.CATEGORY_ID.eq(categoryId))
-                .and(BUDGETS.START_DATE.le(endDate))
-                .and(BUDGETS.END_DATE.ge(startDate));
+                .and(BUDGETS.END_DATE.isNull().or(BUDGETS.END_DATE.ge(startDate)));
+        if (endDate != null) {
+            condition = condition.and(BUDGETS.START_DATE.le(endDate));
+        }
         if (excludeId != null) {
             condition = condition.and(BUDGETS.ID.ne(excludeId));
         }

@@ -6,6 +6,9 @@ import com.budgettracker.backend.dto.UpdateSavingsGoalRequest;
 import com.budgettracker.backend.exception.ForbiddenActionException;
 import com.budgettracker.backend.exception.ResourceNotFoundException;
 import com.budgettracker.backend.jooq.enums.CategoryType;
+import com.budgettracker.backend.jooq.enums.SavingsGoalType;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import com.budgettracker.backend.model.Category;
 import com.budgettracker.backend.model.SavingsGoal;
 import com.budgettracker.backend.model.User;
@@ -63,11 +66,20 @@ public class SavingsGoalService {
 
         // Calculate initial accumulated amount
         List<Long> descendants = categoryRepository.getDescendantCategoryIds(request.getCategoryId());
-        BigDecimal initialAccumulated = calculateAccumulatedSavings(user, descendants);
+        BigDecimal initialAccumulated = BigDecimal.ZERO;
+        if (request.getGoalType() == SavingsGoalType.MONTHLY) {
+            LocalDate today = LocalDate.now();
+            LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+            LocalDateTime startOfNextMonth = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
+            initialAccumulated = calculateAccumulatedSavingsInPeriod(user, descendants, startOfMonth, startOfNextMonth);
+        } else {
+            initialAccumulated = calculateAccumulatedSavings(user, descendants);
+        }
 
         SavingsGoal goal = SavingsGoal.builder()
                 .userId(user.getId())
                 .categoryId(request.getCategoryId())
+                .goalType(request.getGoalType())
                 .targetAmount(request.getTargetAmount())
                 .currentAmount(initialAccumulated)
                 .targetDate(request.getTargetDate())
@@ -102,9 +114,18 @@ public class SavingsGoalService {
 
         // Recalculate accumulated amount in case category changed
         List<Long> descendants = categoryRepository.getDescendantCategoryIds(request.getCategoryId());
-        BigDecimal accumulated = calculateAccumulatedSavings(user, descendants);
+        BigDecimal accumulated = BigDecimal.ZERO;
+        if (request.getGoalType() == SavingsGoalType.MONTHLY) {
+            LocalDate today = LocalDate.now();
+            LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+            LocalDateTime startOfNextMonth = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
+            accumulated = calculateAccumulatedSavingsInPeriod(user, descendants, startOfMonth, startOfNextMonth);
+        } else {
+            accumulated = calculateAccumulatedSavings(user, descendants);
+        }
 
         existing.setCategoryId(request.getCategoryId());
+        existing.setGoalType(request.getGoalType());
         existing.setTargetAmount(request.getTargetAmount());
         existing.setCurrentAmount(accumulated);
         existing.setTargetDate(request.getTargetDate());
@@ -138,13 +159,20 @@ public class SavingsGoalService {
         }
 
         User user = userRepository.findById(userId).orElse(null);
-        BigDecimal sum = BigDecimal.ZERO;
-        if (user != null) {
-            List<Long> descendants = categoryRepository.getDescendantCategoryIds(categoryId);
-            sum = calculateAccumulatedSavings(user, descendants);
-        }
 
         for (SavingsGoal goal : goals) {
+            BigDecimal sum = BigDecimal.ZERO;
+            if (user != null) {
+                List<Long> descendants = categoryRepository.getDescendantCategoryIds(categoryId);
+                if (goal.getGoalType() == SavingsGoalType.MONTHLY) {
+                    LocalDate today = LocalDate.now();
+                    LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+                    LocalDateTime startOfNextMonth = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
+                    sum = calculateAccumulatedSavingsInPeriod(user, descendants, startOfMonth, startOfNextMonth);
+                } else {
+                    sum = calculateAccumulatedSavings(user, descendants);
+                }
+            }
             goal.setCurrentAmount(sum);
             savingsGoalRepository.save(goal);
         }
@@ -172,6 +200,16 @@ public class SavingsGoalService {
         return sum;
     }
 
+    private BigDecimal calculateAccumulatedSavingsInPeriod(User user, List<Long> categoryIds, LocalDateTime start, LocalDateTime end) {
+        List<org.jooq.Record2<BigDecimal, String>> records = savingsGoalRepository.findSavingsTransactionsInPeriod(user.getId(), categoryIds, start, end);
+        BigDecimal sum = BigDecimal.ZERO.setScale(4, java.math.RoundingMode.HALF_UP);
+        for (var rec : records) {
+            BigDecimal converted = currencyExchangeService.convert(rec.value1(), rec.value2(), user.getDefaultCurrency());
+            sum = sum.add(converted);
+        }
+        return sum;
+    }
+
     private SavingsGoalDto mapToDto(SavingsGoal goal) {
         if (goal == null) {
             return null;
@@ -180,6 +218,7 @@ public class SavingsGoalService {
                 .id(goal.getId())
                 .userId(goal.getUserId())
                 .categoryId(goal.getCategoryId())
+                .goalType(goal.getGoalType())
                 .targetAmount(goal.getTargetAmount())
                 .currentAmount(goal.getCurrentAmount())
                 .targetDate(goal.getTargetDate())

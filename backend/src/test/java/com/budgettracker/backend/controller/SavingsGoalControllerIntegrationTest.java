@@ -5,6 +5,7 @@ import com.budgettracker.backend.dto.CreateTransactionRequest;
 import com.budgettracker.backend.dto.SavingsGoalDto;
 import com.budgettracker.backend.dto.UpdateSavingsGoalRequest;
 import com.budgettracker.backend.jooq.enums.CategoryType;
+import com.budgettracker.backend.jooq.enums.SavingsGoalType;
 import com.budgettracker.backend.model.Category;
 import com.budgettracker.backend.model.User;
 import com.budgettracker.backend.repository.CategoryRepository;
@@ -109,6 +110,7 @@ public class SavingsGoalControllerIntegrationTest {
     public void testCreateSavingsGoal_Success() throws Exception {
         CreateSavingsGoalRequest request = CreateSavingsGoalRequest.builder()
                 .categoryId(parentSavingsCategory.getId())
+                .goalType(SavingsGoalType.ONE_OFF)
                 .targetAmount(new BigDecimal("10000.00"))
                 .targetDate(LocalDate.of(2027, 12, 31))
                 .build();
@@ -129,6 +131,7 @@ public class SavingsGoalControllerIntegrationTest {
     public void testCreateSavingsGoal_InvalidCategoryType() throws Exception {
         CreateSavingsGoalRequest request = CreateSavingsGoalRequest.builder()
                 .categoryId(expenseCategory.getId()) // EXPENSE instead of SAVINGS
+                .goalType(SavingsGoalType.ONE_OFF)
                 .targetAmount(new BigDecimal("10000.00"))
                 .build();
 
@@ -150,6 +153,7 @@ public class SavingsGoalControllerIntegrationTest {
 
         CreateSavingsGoalRequest request = CreateSavingsGoalRequest.builder()
                 .categoryId(otherUserCategory.getId())
+                .goalType(SavingsGoalType.ONE_OFF)
                 .targetAmount(new BigDecimal("10000.00"))
                 .build();
 
@@ -166,6 +170,7 @@ public class SavingsGoalControllerIntegrationTest {
         // 1. Create a savings goal on parentSavingsCategory
         CreateSavingsGoalRequest request = CreateSavingsGoalRequest.builder()
                 .categoryId(parentSavingsCategory.getId())
+                .goalType(SavingsGoalType.ONE_OFF)
                 .targetAmount(new BigDecimal("5000.00"))
                 .build();
 
@@ -200,5 +205,81 @@ public class SavingsGoalControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id", is(goal.getId().intValue())))
                 .andExpect(jsonPath("$[0].currentAmount", is(1500.00)));
+    }
+
+    @Test
+    public void testSavingsGoal_MonthlyVsOneOff() throws Exception {
+        // 1. Create a ONE_OFF goal
+        CreateSavingsGoalRequest requestOneOff = CreateSavingsGoalRequest.builder()
+                .categoryId(childSavingsCategory.getId())
+                .goalType(SavingsGoalType.ONE_OFF)
+                .targetAmount(new BigDecimal("5000.00"))
+                .build();
+
+        String resOneOff = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestOneOff)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        SavingsGoalDto oneOffGoal = objectMapper.readValue(resOneOff, SavingsGoalDto.class);
+
+        // 2. Create a MONTHLY goal
+        CreateSavingsGoalRequest requestMonthly = CreateSavingsGoalRequest.builder()
+                .categoryId(parentSavingsCategory.getId())
+                .goalType(SavingsGoalType.MONTHLY)
+                .targetAmount(new BigDecimal("2000.00"))
+                .build();
+
+        String resMonthly = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestMonthly)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        SavingsGoalDto monthlyGoal = objectMapper.readValue(resMonthly, SavingsGoalDto.class);
+
+        // 3. Post a SAVINGS transaction in the past month (e.g. 45 days ago)
+        CreateTransactionRequest pastTx = CreateTransactionRequest.builder()
+                .categoryId(childSavingsCategory.getId())
+                .amount(new BigDecimal("1000.00"))
+                .currency("USD")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now().minusDays(45))
+                .notes("Past deposit")
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(pastTx)))
+                .andExpect(status().isCreated());
+
+        // 4. Post a SAVINGS transaction in the current month
+        CreateTransactionRequest currentTx = CreateTransactionRequest.builder()
+                .categoryId(childSavingsCategory.getId())
+                .amount(new BigDecimal("1500.00"))
+                .currency("USD")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .notes("Current deposit")
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(currentTx)))
+                .andExpect(status().isCreated());
+
+        // 5. Fetch goals and verify amounts
+        // ONE_OFF child goal: should have BOTH past and current transactions (1000 + 1500 = 2500)
+        // MONTHLY parent goal: should have ONLY current transaction (1500) because past is outside the current month
+        mockMvc.perform(get("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + oneOffGoal.getId() + ")].currentAmount", contains(2500.00)))
+                .andExpect(jsonPath("$[?(@.id == " + monthlyGoal.getId() + ")].currentAmount", contains(1500.00)));
     }
 }

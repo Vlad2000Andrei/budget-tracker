@@ -141,7 +141,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
 
-        {pathname !== '/accounts' && pathname !== '/categories' && (
+        {pathname !== '/accounts' && pathname !== '/categories' && pathname !== '/goals' && (
           <FAB onClick={() => setModalOpen(true)} />
         )}
 

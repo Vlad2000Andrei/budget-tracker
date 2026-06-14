@@ -1,5 +1,6 @@
 package com.budgettracker.backend.model;
 
+import com.budgettracker.backend.jooq.enums.SavingsGoalType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +20,7 @@ public class SavingsGoal {
     private Long id;
     private Long userId;
     private Long categoryId;
+    private SavingsGoalType goalType;
     private BigDecimal targetAmount;
     private BigDecimal currentAmount;
     private LocalDate targetDate;

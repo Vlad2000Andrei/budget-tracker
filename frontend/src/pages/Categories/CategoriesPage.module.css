@@ -45,7 +45,7 @@
   gap: 24px;
 }
 
-.mobileAddBtn {
+.btn.mobileAddBtn {
   display: none;
 }
 
@@ -66,7 +66,7 @@
     grid-template-columns: 1fr;
   }
 
-  .mobileAddBtn {
+  .btn.mobileAddBtn {
     position: fixed;
     bottom: 96px;
     right: 16px;
@@ -89,7 +89,7 @@
       transform var(--md-duration-short) var(--md-easing-standard);
   }
 
-  .mobileAddBtn:hover {
+  .btn.mobileAddBtn:hover {
     background: color-mix(in srgb, var(--md-primary-container) 92%, var(--md-on-primary-container) 8%);
     box-shadow: var(--md-elevation-4);
     transform: translateY(-2px);

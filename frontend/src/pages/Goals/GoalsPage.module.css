@@ -32,7 +32,7 @@
   margin: 4px 0 0 0;
 }
 
-.layout {
+.goalsLayout {
   display: grid;
   grid-template-columns: 1fr 360px;
   gap: 24px;
@@ -61,7 +61,7 @@
 }
 
 @media (max-width: 768px) {
-  .layout {
+  .goalsLayout {
     grid-template-columns: 1fr;
   }
 
@@ -272,20 +272,45 @@
   color: var(--md-on-surface-variant);
 }
 
-/* Account Cards Grid */
+/* Category Tree / Main Panel list */
 .mainContent {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
-.accountsList {
+.tabsContainer {
+  display: flex;
+  background-color: var(--md-surface-container-high);
+  padding: 4px;
+  border-radius: var(--md-shape-medium);
+}
+
+.tabBtn {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: var(--md-body-medium-size);
+  font-weight: 500;
+  border-radius: var(--md-shape-small);
+  color: var(--md-on-surface-variant);
+  transition: all var(--md-duration-short) var(--md-easing-standard);
+  text-align: center;
+}
+
+.tabBtnActive {
+  background-color: var(--md-surface);
+  color: var(--md-primary);
+  font-weight: 600;
+  box-shadow: var(--md-elevation-1);
+}
+
+.goalsList {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
 }
 
-.accountCard {
+.goalCard {
   background-color: var(--md-surface-container-low);
   border-radius: var(--md-shape-large);
   padding: 20px;
@@ -297,12 +322,12 @@
               box-shadow var(--md-duration-short) var(--md-easing-standard);
 }
 
-.accountCard:hover {
+.goalCard:hover {
   transform: translateY(-2px);
   box-shadow: var(--md-elevation-2);
 }
 
-.checkingAccent {
+.budgetAccent {
   border-left: 4px solid var(--md-primary);
 }
 
@@ -316,14 +341,30 @@
   align-items: flex-start;
 }
 
-.accountName {
+.categoryInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.colorDot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--md-shape-full);
+}
+
+.categoryIcon {
+  font-size: 20px;
+}
+
+.categoryName {
   font-weight: 600;
   font-size: var(--md-title-medium-size);
   color: var(--md-on-surface);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 160px;
+  max-width: 140px;
 }
 
 .badge {
@@ -333,7 +374,7 @@
   font-weight: 600;
 }
 
-.checkingBadge {
+.budgetBadge {
   background-color: var(--md-primary-container);
   color: var(--md-on-primary-container);
 }
@@ -343,26 +384,74 @@
   color: var(--md-on-tertiary-container);
 }
 
-.balance {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--md-on-surface);
+.amounts {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
   margin-top: 4px;
 }
 
-.cardFooter {
+.currentAmt {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--md-on-surface);
+}
+
+.targetAmt {
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface-variant);
+  margin-bottom: 2px;
+}
+
+/* Progress bar inside card */
+.progressContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progressLabelRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--md-label-small-size);
+  color: var(--md-on-surface-variant);
+}
+
+.progressTrack {
+  height: 8px;
+  width: 100%;
+  background-color: var(--md-surface-variant);
+  border-radius: var(--md-shape-full);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: var(--md-shape-full);
+  transition: width 0.3s ease;
+}
+
+.progressPrimary {
+  background-color: var(--md-primary);
+}
+
+.progressTertiary {
+  background-color: var(--md-tertiary);
+}
+
+.progressDanger {
+  background-color: var(--md-error);
+}
+
+.goalDates {
+  font-size: var(--md-body-small-size);
+  color: var(--md-on-surface-variant);
+  border-top: 1px solid var(--md-outline-variant);
+  padding-top: 12px;
+  margin-top: 4px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid var(--md-outline-variant);
-  padding-top: 12px;
-  margin-top: 8px;
-}
-
-.currencyLabel {
-  font-size: var(--md-label-medium-size);
-  color: var(--md-on-surface-variant);
-  font-weight: 600;
 }
 
 .actions {
@@ -449,6 +538,43 @@
   cursor: not-allowed;
 }
 
+.formActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.formActions button {
+  flex: 1;
+}
+
+.btnOutlinedDanger {
+  background-color: transparent;
+  color: var(--md-error);
+  border: 1.5px solid var(--md-error);
+}
+
+.btnOutlinedDanger:hover {
+  background-color: var(--md-error-container);
+  color: var(--md-error);
+}
+
+.btnDanger {
+  background-color: var(--md-error);
+  color: var(--md-on-error);
+}
+
+.btnDanger:hover {
+  background-color: var(--md-error-container);
+  color: var(--md-on-error-container);
+}
+
+.btnDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Alert Notification Banners */
 .alert {
   padding: 12px 16px;
@@ -472,7 +598,7 @@
   border-color: #f5c6cb;
 }
 
-/* ── Custom Modal Confirmation (Toast Styling) ── */
+/* Custom Deletion Modal confirmation */
 .confirmBackdrop {
   position: fixed;
   inset: 0;
@@ -553,43 +679,6 @@
   padding-top: 16px;
 }
 
-.formActions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-
-.formActions button {
-  flex: 1;
-}
-
-.btnOutlinedDanger {
-  background-color: transparent;
-  color: var(--md-error);
-  border: 1.5px solid var(--md-error);
-}
-
-.btnOutlinedDanger:hover {
-  background-color: var(--md-error-container);
-  color: var(--md-error);
-}
-
-.btnDanger {
-  background-color: var(--md-error);
-  color: var(--md-on-error);
-}
-
-.btnDanger:hover {
-  background-color: var(--md-error-container);
-  color: var(--md-on-error-container);
-}
-
-.btnDanger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 @media (max-width: 480px) {
   .header {
     flex-direction: column;
@@ -629,4 +718,3 @@
     display: none;
   }
 }
-

@@ -109,13 +109,27 @@ public class DashboardService {
                 List<DashboardSummaryDto.BudgetSummaryDto> budgetSummaries = new ArrayList<>();
 
                 for (Budget budget : budgets) {
-                        // Check if active (current date falls within startDate and endDate)
-                        if (!today.isBefore(budget.getStartDate()) && !today.isAfter(budget.getEndDate())) {
+                        // Check if active (current date falls within startDate and endDate, if endDate is specified)
+                        boolean isActive = !today.isBefore(budget.getStartDate()) && 
+                                           (budget.getEndDate() == null || !today.isAfter(budget.getEndDate()));
+                        if (isActive) {
                                 Category category = categoryRepository.findById(budget.getCategoryId()).orElse(null);
 
                                 // Get descendant category IDs to sum up spent
                                 List<Long> descendants = categoryRepository
                                                 .getDescendantCategoryIds(budget.getCategoryId());
+
+                                LocalDateTime startQuery;
+                                LocalDateTime endQuery;
+                                if (budget.getEndDate() != null) {
+                                        startQuery = budget.getStartDate().atStartOfDay();
+                                        endQuery = budget.getEndDate().plusDays(1).atStartOfDay();
+                                } else {
+                                        LocalDate startOfMonthDate = today.withDayOfMonth(1);
+                                        LocalDate actualStartDate = budget.getStartDate().isAfter(startOfMonthDate) ? budget.getStartDate() : startOfMonthDate;
+                                        startQuery = actualStartDate.atStartOfDay();
+                                        endQuery = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
+                                }
 
                                 List<org.jooq.Record2<BigDecimal, String>> budgetTxs = dsl.select(
                                                 TRANSACTIONS.CONVERTED_AMOUNT,
@@ -124,10 +138,8 @@ public class DashboardService {
                                                 .where(TRANSACTIONS.USER_ID.eq(user.getId())
                                                                 .and(TRANSACTIONS.CATEGORY_ID.in(descendants))
                                                                 .and(TRANSACTIONS.TYPE.eq(CategoryType.EXPENSE))
-                                                                .and(TRANSACTIONS.DATE.ge(
-                                                                                budget.getStartDate().atStartOfDay()))
-                                                                .and(TRANSACTIONS.DATE.lt(budget.getEndDate()
-                                                                                .plusDays(1).atStartOfDay())))
+                                                                .and(TRANSACTIONS.DATE.ge(startQuery))
+                                                                .and(TRANSACTIONS.DATE.lt(endQuery)))
                                                 .fetch();
 
                                 BigDecimal spent = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);

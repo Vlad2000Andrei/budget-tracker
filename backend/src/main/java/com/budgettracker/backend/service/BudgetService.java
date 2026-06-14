@@ -40,7 +40,7 @@ public class BudgetService {
 
     @Transactional
     public BudgetDto createBudget(CreateBudgetRequest request, User user) {
-        if (request.getStartDate().isAfter(request.getEndDate())) {
+        if (request.getEndDate() != null && request.getStartDate().isAfter(request.getEndDate())) {
             throw new IllegalArgumentException("Start date must be before or equal to end date");
         }
 
@@ -85,7 +85,7 @@ public class BudgetService {
             throw new ForbiddenActionException("You do not have permission to modify this budget");
         }
 
-        if (request.getStartDate().isAfter(request.getEndDate())) {
+        if (request.getEndDate() != null && request.getStartDate().isAfter(request.getEndDate())) {
             throw new IllegalArgumentException("Start date must be before or equal to end date");
         }
 
