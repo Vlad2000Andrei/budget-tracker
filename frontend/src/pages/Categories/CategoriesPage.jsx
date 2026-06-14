@@ -30,6 +30,7 @@ export default function CategoriesPage() {
   const [parentCategoryId, setParentCategoryId] = useState('');
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
   const [selectedIcon, setSelectedIcon] = useState(Object.keys(PRESET_ICONS)[0]);
+  const [customEmoji, setCustomEmoji] = useState('');
   const [savingCategory, setSavingCategory] = useState(false);
   const [categoryMessage, setCategoryMessage] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -102,7 +103,13 @@ export default function CategoriesPage() {
     setCategoryName(cat.name);
     setParentCategoryId(cat.parentId ? cat.parentId.toString() : '');
     setSelectedColor(cat.color || PRESET_COLORS[0]);
-    setSelectedIcon(cat.icon || Object.keys(PRESET_ICONS)[0]);
+    if (cat.icon && cat.icon in PRESET_ICONS) {
+      setSelectedIcon(cat.icon);
+      setCustomEmoji('');
+    } else {
+      setSelectedIcon(cat.icon || Object.keys(PRESET_ICONS)[0]);
+      setCustomEmoji(cat.icon || '');
+    }
     setCategoryMessage(null);
     setIsFormOpen(true);
   };
@@ -129,6 +136,7 @@ export default function CategoriesPage() {
     setParentCategoryId('');
     setSelectedColor(PRESET_COLORS[0]);
     setSelectedIcon(Object.keys(PRESET_ICONS)[0]);
+    setCustomEmoji('');
     setIsFormOpen(false);
   };
 
@@ -370,6 +378,20 @@ export default function CategoriesPage() {
                     aria-label={`Select color ${c}`}
                   />
                 ))}
+                {/* Custom Color Selector Option */}
+                <div className={styles.customColorContainer}>
+                  <input
+                    type="color"
+                    id="custom-color-picker"
+                    value={PRESET_COLORS.includes(selectedColor) ? '#ffffff' : selectedColor.toLowerCase()}
+                    onChange={(e) => setSelectedColor(e.target.value.toUpperCase())}
+                    className={styles.customColorInput}
+                    aria-label="Choose custom color"
+                  />
+                  <label htmlFor="custom-color-picker" className={`${styles.colorPickerOption} ${styles.customColorOption} ${!PRESET_COLORS.includes(selectedColor) ? styles.colorPickerOptionSelected : ''}`} style={{ backgroundColor: !PRESET_COLORS.includes(selectedColor) ? selectedColor : 'transparent' }}>
+                    {!PRESET_COLORS.includes(selectedColor) ? '' : '🎨'}
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -380,13 +402,43 @@ export default function CategoriesPage() {
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setSelectedIcon(key)}
-                    className={`${styles.iconPickerOption} ${selectedIcon === key ? styles.iconPickerOptionSelected : ''}`}
+                    onClick={() => {
+                      setSelectedIcon(key);
+                      setCustomEmoji('');
+                    }}
+                    className={`${styles.iconPickerOption} ${selectedIcon === key && !customEmoji ? styles.iconPickerOptionSelected : ''}`}
                     aria-label={`Select icon ${key}`}
                   >
                     {emoji}
                   </button>
                 ))}
+              </div>
+              <div className={styles.customEmojiSection}>
+                <label htmlFor="custom-emoji" className={styles.customEmojiLabel}>Or enter custom emoji:</label>
+                <div className={styles.customEmojiInputRow}>
+                  <input
+                    id="custom-emoji"
+                    type="text"
+                    maxLength="4"
+                    placeholder="Enter emoji (e.g. 🍉)"
+                    className={styles.input}
+                    value={customEmoji}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomEmoji(val);
+                      if (val.trim()) {
+                        setSelectedIcon(val.trim());
+                      } else {
+                        setSelectedIcon(Object.keys(PRESET_ICONS)[0]);
+                      }
+                    }}
+                  />
+                  {customEmoji && (
+                    <span className={styles.customEmojiPreview}>
+                      {selectedIcon}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

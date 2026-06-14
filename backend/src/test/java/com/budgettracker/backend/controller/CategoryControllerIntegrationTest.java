@@ -97,6 +97,29 @@ public class CategoryControllerIntegrationTest {
     }
 
     @Test
+    public void testCreateCategory_CustomColorAndEmoji() throws Exception {
+        CreateCategoryRequest request = CreateCategoryRequest.builder()
+                .name("Custom Groceries")
+                .type(CategoryType.EXPENSE)
+                .color("#AABBCC")
+                .icon("🍉")
+                .build();
+
+        mockMvc.perform(post("/v1/categories")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.name", is("Custom Groceries")))
+                .andExpect(jsonPath("$.type", is("EXPENSE")))
+                .andExpect(jsonPath("$.color", is("#AABBCC")))
+                .andExpect(jsonPath("$.icon", is("🍉")));
+    }
+
+
+    @Test
     public void testCreateCategory_ValidationFailure() throws Exception {
         CreateCategoryRequest request = CreateCategoryRequest.builder()
                 .name("") // Blank name
