@@ -32,6 +32,7 @@ export default function CategoriesPage() {
   const [selectedIcon, setSelectedIcon] = useState(Object.keys(PRESET_ICONS)[0]);
   const [savingCategory, setSavingCategory] = useState(false);
   const [categoryMessage, setCategoryMessage] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   // Load categories on mount
   useEffect(() => {
@@ -103,6 +104,7 @@ export default function CategoriesPage() {
     setSelectedColor(cat.color || PRESET_COLORS[0]);
     setSelectedIcon(cat.icon || Object.keys(PRESET_ICONS)[0]);
     setCategoryMessage(null);
+    setIsFormOpen(true);
   };
 
   const handleDeleteCategory = async (id, name) => {
@@ -127,6 +129,7 @@ export default function CategoriesPage() {
     setParentCategoryId('');
     setSelectedColor(PRESET_COLORS[0]);
     setSelectedIcon(Object.keys(PRESET_ICONS)[0]);
+    setIsFormOpen(false);
   };
 
   // Group active categories into tree
@@ -159,6 +162,15 @@ export default function CategoriesPage() {
           <h1>Categories</h1>
           <p>Organize custom transaction and budget categories with custom icons and colors.</p>
         </div>
+        <button
+          className={`${styles.btn} ${styles.btnPrimary} ${styles.mobileAddBtn}`}
+          onClick={() => setIsFormOpen(true)}
+          aria-label="Add Category"
+          title="Add Category"
+        >
+          <span className={styles.mobileAddBtnIcon} aria-hidden="true">+</span>
+          <span className={styles.mobileAddBtnLabel}>Add Category</span>
+        </button>
       </div>
 
       <div className={styles.categoryLayout}>
@@ -294,17 +306,26 @@ export default function CategoriesPage() {
         </div>
 
         {/* Category Editor Form */}
-        <div className={styles.card}>
-          <div className={styles.formHeader}>
-            <h2>{editingCategory ? 'Edit Category' : 'New Category'}</h2>
-            {editingCategory && (
-              <button onClick={resetCategoryForm} className={styles.cancelEditBtn}>
-                Cancel Edit
+        <div className={`${styles.sidebarContainer} ${isFormOpen ? styles.isOpen : ''}`}>
+          <div className={styles.backdrop} onClick={resetCategoryForm} />
+          <div className={`${styles.card} ${styles.sidebarCard}`}>
+            {/* Drag handle */}
+            <div className={styles.mobileHandle} aria-hidden="true" />
+            <div className={styles.formHeader}>
+              <h2>{editingCategory ? 'Edit Category' : 'New Category'}</h2>
+              <button
+                type="button"
+                className={styles.closeBtn}
+                onClick={resetCategoryForm}
+                aria-label="Close form"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                  <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
               </button>
-            )}
-          </div>
+            </div>
 
-          <form onSubmit={handleSaveCategory} className={styles.categoryForm}>
+            <form onSubmit={handleSaveCategory} className={styles.categoryForm}>
             <div className={styles.formGroup}>
               <label htmlFor="cat-name" className={styles.label}>Category Name</label>
               <input
@@ -369,7 +390,14 @@ export default function CategoriesPage() {
               </div>
             </div>
 
-            <div className={styles.actions}>
+            <div className={styles.formActions}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnOutlinedDanger}`}
+                onClick={resetCategoryForm}
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
                 disabled={savingCategory}
@@ -384,6 +412,7 @@ export default function CategoriesPage() {
             </div>
           </form>
         </div>
+      </div>
       </div>
     </div>
   );

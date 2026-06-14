@@ -33,6 +33,7 @@ export default function AccountsPage() {
   const [currency, setCurrency] = useState(user?.defaultCurrency || 'USD');
   const [editingAccount, setEditingAccount] = useState(null);
   const [initialBalance, setInitialBalance] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   // Load user default currency when profile updates
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function AccountsPage() {
     setType('CHECKING');
     setCurrency(user?.defaultCurrency || 'USD');
     setInitialBalance('');
+    setIsFormOpen(false);
   };
 
   // Switch to Edit mode
@@ -81,6 +83,7 @@ export default function AccountsPage() {
     setType(account.type);
     setCurrency(account.currency);
     setAlert(null);
+    setIsFormOpen(true);
   };
 
   // Submit Create or Update
@@ -157,6 +160,15 @@ export default function AccountsPage() {
           <h1>Accounts</h1>
           <p>Configure checking and savings accounts and track your current balances.</p>
         </div>
+        <button
+          className={`${styles.btn} ${styles.btnPrimary} ${styles.mobileAddBtn}`}
+          onClick={() => setIsFormOpen(true)}
+          aria-label="Add Account"
+          title="Add Account"
+        >
+          <span className={styles.mobileAddBtnIcon} aria-hidden="true">+</span>
+          <span className={styles.mobileAddBtnLabel}>Add Account</span>
+        </button>
       </header>
 
       {/* Main Layout Grid */}
@@ -228,15 +240,23 @@ export default function AccountsPage() {
         </main>
 
         {/* Right Column: Context form */}
-        <aside className={styles.sidebar}>
-          <div className={styles.card}>
+        <aside className={`${styles.sidebarContainer} ${isFormOpen ? styles.isOpen : ''}`}>
+          <div className={styles.backdrop} onClick={resetForm} />
+          <div className={`${styles.card} ${styles.sidebarCard}`}>
+            {/* Drag handle */}
+            <div className={styles.mobileHandle} aria-hidden="true" />
             <div className={styles.formHeader}>
               <h2>{editingAccount ? 'Edit Account' : 'Add Account'}</h2>
-              {editingAccount && (
-                <button className={styles.cancelEditBtn} onClick={resetForm}>
-                  Cancel
-                </button>
-              )}
+              <button
+                type="button"
+                className={styles.closeBtn}
+                onClick={resetForm}
+                aria-label="Close form"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                  <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+              </button>
             </div>
 
             <form onSubmit={handleSubmit} className={styles.form}>
@@ -331,14 +351,23 @@ export default function AccountsPage() {
                 )}
               </div>
 
-              {/* Save Button */}
-              <button
-                type="submit"
-                disabled={saving || !name.trim()}
-                className={`${styles.btn} ${styles.btnPrimary}`}
-              >
-                {saving ? 'Saving...' : editingAccount ? 'Save Changes' : 'Create Account'}
-              </button>
+              {/* Form Actions (Cancel + Save) */}
+              <div className={styles.formActions}>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnOutlinedDanger}`}
+                  onClick={resetForm}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || !name.trim()}
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                >
+                  {saving ? 'Saving...' : editingAccount ? 'Save Changes' : 'Create Account'}
+                </button>
+              </div>
             </form>
           </div>
         </aside>

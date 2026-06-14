@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar/Sidebar';
 import FAB from '../components/FAB/FAB';
@@ -49,6 +49,7 @@ const MOBILE_NAV_ITEMS = [
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -140,7 +141,9 @@ export default function AppLayout() {
           <Outlet />
         </main>
 
-        <FAB onClick={() => setModalOpen(true)} />
+        {pathname !== '/accounts' && pathname !== '/categories' && (
+          <FAB onClick={() => setModalOpen(true)} />
+        )}
 
         {/* Mobile Bottom Navigation Bar */}
         <nav className={styles.mobileNavBar} aria-label="Mobile navigation">
