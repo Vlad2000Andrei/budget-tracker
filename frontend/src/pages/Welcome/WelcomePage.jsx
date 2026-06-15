@@ -144,7 +144,7 @@ export default function WelcomePage() {
               </div>
 
               <div className={styles.onboardingNote}>
-                💡 <strong>Tip:</strong> Don't worry, you can always change your display name later in your Account Settings.
+                💡 <strong>Tip:</strong> Don&apos;t worry, you can always change your display name later in your Account Settings.
               </div>
 
               <button
@@ -165,7 +165,7 @@ export default function WelcomePage() {
           <div style={{ width: '100%' }}>
             <h1 className={styles.title}>Select Currency 💳</h1>
             <p className={styles.subtitle}>
-              Let's set your default base currency. This is the currency we will use for dashboard summaries, budgets, and savings goals.
+              Let&apos;s set your default base currency. This is the currency we will use for dashboard summaries, budgets, and savings goals.
             </p>
 
             <div className={styles.divider} aria-hidden="true" />

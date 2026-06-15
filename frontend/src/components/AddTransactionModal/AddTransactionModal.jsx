@@ -31,21 +31,29 @@ export default function AddTransactionModal({ onClose, transaction }) {
 
   const [dbCategories, setDbCategories] = useState([]);
   const [dbAccounts, setDbAccounts] = useState([]);
-  const [dbSavingsGoals, setDbSavingsGoals] = useState([]);
   const [categorySearch, setCategorySearch] = useState('');
+  const [showCategorySearchInput, setShowCategorySearchInput] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(!!transaction?.notes);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [savingsAction, setSavingsAction] = useState(
     transaction?.type === 'SAVINGS' && transaction.amount < 0 ? 'WITHDRAWAL' : 'DEPOSIT'
   );
+  const [showEndDate, setShowEndDate] = useState(!!transaction?.recurrenceRule?.endDate);
   const amountRef = useRef(null);
   const backdropRef = useRef(null);
+  const categorySearchInputRef = useRef(null);
+
+  useEffect(() => {
+    if (showCategorySearchInput && categorySearchInputRef.current) {
+      categorySearchInputRef.current.focus();
+    }
+  }, [showCategorySearchInput]);
 
   const formatCurrency = (amount, currency) => {
     try {
       return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
-    } catch (e) {
+    } catch {
       return (amount || 0).toFixed(2) + ' ' + currency;
     }
   };
@@ -61,7 +69,6 @@ export default function AddTransactionModal({ onClose, transaction }) {
         ]);
         setDbCategories(catsRes.data);
         setDbAccounts(accountsRes.data);
-        setDbSavingsGoals(goalsRes.data);
 
         // If editing an existing SAVINGS transaction, find its from/to accounts
         if (transaction && transaction.type === 'SAVINGS') {
@@ -154,7 +161,7 @@ export default function AddTransactionModal({ onClose, transaction }) {
   }, [dbAccounts]);
 
   const categories = CATEGORIES_BY_TYPE[form.type] ?? [];
-  const recentChips = categories.slice(0, 6);
+  const recentChips = categories.slice(0, 10);
   const searchResults = categorySearch.length >= 2
     ? categories.filter((c) =>
         c.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
@@ -171,6 +178,8 @@ export default function AddTransactionModal({ onClose, transaction }) {
     setSaving(true);
     setSaveError(null);
 
+    const activeDate = form.makeRecurring ? form.recurringStartDate : form.date;
+
     if (form.type === 'MOVE') {
       if (!form.fromAccountId || !form.toAccountId) {
         setSaveError("Both From and To accounts are required for moves.");
@@ -183,7 +192,7 @@ export default function AddTransactionModal({ onClose, transaction }) {
         toAccountId: parseInt(form.toAccountId, 10),
         amount: Math.abs(parseFloat(form.amount)),
         currency: form.currency,
-        date: new Date(form.date).toISOString(),
+        date: new Date(activeDate).toISOString(),
         notes: form.notes || undefined,
       };
 
@@ -214,7 +223,7 @@ export default function AddTransactionModal({ onClose, transaction }) {
         amount: Math.abs(parseFloat(form.amount)),
         currency: form.currency,
         type: savingsAction,
-        date: new Date(form.date).toISOString(),
+        date: new Date(activeDate).toISOString(),
         notes: form.notes || undefined,
         categoryId: form.categoryId ? parseInt(form.categoryId, 10) : undefined,
       };
@@ -240,14 +249,14 @@ export default function AddTransactionModal({ onClose, transaction }) {
       currency: form.currency,
       type: form.type,
       notes: form.notes || undefined,
-      date: new Date(form.date).toISOString(),
+      date: new Date(activeDate).toISOString(),
     };
 
     if (form.makeRecurring) {
       payload.recurrenceRule = {
         frequency: form.frequency,
         interval: parseInt(form.interval, 10),
-        startDate: form.recurringStartDate || form.date,
+        startDate: form.recurringStartDate || activeDate,
         endDate: form.endDate || undefined,
       };
     }
@@ -451,28 +460,53 @@ export default function AddTransactionModal({ onClose, transaction }) {
               <label className={styles.label}>Category</label>
 
               {/* Recent chips */}
-              <div className={styles.chips} role="group" aria-label="Recent categories">
+              <div className={styles.categoryChips} role="group" aria-label="Recent categories">
+                <div className={styles.stickySearchContainer}>
+                  <div className={`${styles.searchWrap} ${showCategorySearchInput || categorySearch ? styles.searchWrapExpanded : ''}`}>
+                    <button
+                      type="button"
+                      className={styles.searchToggleBtn}
+                      onClick={() => {
+                        const nextVal = !showCategorySearchInput;
+                        setShowCategorySearchInput(nextVal);
+                        if (!nextVal) setCategorySearch('');
+                      }}
+                      aria-label="Search categories"
+                    >
+                      <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                      </svg>
+                      {!(showCategorySearchInput || categorySearch) && <span className={styles.searchBtnText}>Search</span>}
+                    </button>
+                    <input
+                      ref={categorySearchInputRef}
+                      type="search"
+                      placeholder="Search categories…"
+                      className={styles.searchInput}
+                      value={categorySearch}
+                      onChange={(e) => setCategorySearch(e.target.value)}
+                      onBlur={() => {
+                        if (!categorySearch) setShowCategorySearchInput(false);
+                      }}
+                    />
+                  </div>
+                </div>
                 {recentChips.map((c) => (
                   <button
                     key={c.id}
                     className={`${styles.chip} ${form.categoryId === c.id ? styles.chipActive : ''}`}
-                    onClick={() => { set('categoryId', c.id); setCategorySearch(''); }}
+                    onClick={() => {
+                      set('categoryId', c.id);
+                      setCategorySearch('');
+                      setShowCategorySearchInput(false);
+                    }}
                     aria-pressed={form.categoryId === c.id}
                   >
                     {c.icon} {c.name}
                   </button>
                 ))}
               </div>
-
-              {/* Search */}
-              <input
-                type="search"
-                placeholder="Search all categories…"
-                className={styles.input}
-                value={categorySearch}
-                onChange={(e) => setCategorySearch(e.target.value)}
-                aria-label="Search categories"
-              />
 
               {/* Search results */}
               {searchResults.length > 0 && (
@@ -481,7 +515,11 @@ export default function AddTransactionModal({ onClose, transaction }) {
                     <li key={c.id}>
                       <button
                         className={styles.searchResultItem}
-                        onClick={() => { set('categoryId', c.id); setCategorySearch(''); }}
+                        onClick={() => {
+                          set('categoryId', c.id);
+                          setCategorySearch('');
+                          setShowCategorySearchInput(false);
+                        }}
                         role="option"
                         aria-selected={form.categoryId === c.id}
                       >
@@ -505,16 +543,18 @@ export default function AddTransactionModal({ onClose, transaction }) {
           )}
 
           {/* ── Date ──────────────────────────────────────────── */}
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="modal-date">Date</label>
-            <input
-              id="modal-date"
-              type="date"
-              className={styles.input}
-              value={form.date}
-              onChange={(e) => set('date', e.target.value)}
-            />
-          </div>
+          {!form.makeRecurring && (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="modal-date">Date</label>
+              <input
+                id="modal-date"
+                type="date"
+                className={styles.input}
+                value={form.date}
+                onChange={(e) => set('date', e.target.value)}
+              />
+            </div>
+          )}
 
           {/* ── Account Selector(s) ────────────────────────────── */}
           {(form.type === 'SAVINGS' || form.type === 'MOVE') ? (
@@ -654,7 +694,14 @@ export default function AddTransactionModal({ onClose, transaction }) {
           <div className={styles.field}>
             <button
               className={styles.expandToggle}
-              onClick={() => set('makeRecurring', !form.makeRecurring)}
+              onClick={() => {
+                const nextVal = !form.makeRecurring;
+                setForm(f => ({
+                  ...f,
+                  makeRecurring: nextVal,
+                  recurringStartDate: nextVal ? f.date : f.recurringStartDate
+                }));
+              }}
               aria-expanded={form.makeRecurring}
             >
               <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"
@@ -708,19 +755,41 @@ export default function AddTransactionModal({ onClose, transaction }) {
                     onChange={(e) => set('recurringStartDate', e.target.value)}
                   />
                 </div>
-                <div className={styles.field}>
-                  <label className={styles.label} htmlFor="modal-end-date">
-                    End Date <span className={styles.labelHint}>optional — leave blank to repeat forever</span>
-                  </label>
-                  <input
-                    id="modal-end-date"
-                    type="date"
-                    className={styles.input}
-                    value={form.endDate}
-                    min={form.recurringStartDate || form.date}
-                    onChange={(e) => set('endDate', e.target.value)}
-                  />
-                </div>
+                {showEndDate ? (
+                  <div className={styles.field} style={{ animation: 'fadeSlide 200ms var(--md-easing-decelerate) both' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className={styles.label} htmlFor="modal-end-date">End Date</label>
+                      <button
+                        type="button"
+                        className={styles.removeEndDateBtn}
+                        onClick={() => {
+                          setShowEndDate(false);
+                          set('endDate', '');
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <input
+                      id="modal-end-date"
+                      type="date"
+                      className={styles.input}
+                      value={form.endDate}
+                      min={form.recurringStartDate || form.date}
+                      onChange={(e) => set('endDate', e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <div className={styles.field}>
+                    <button
+                      type="button"
+                      className={styles.addEndDateBtn}
+                      onClick={() => setShowEndDate(true)}
+                    >
+                      <span aria-hidden="true">+</span> Add End Date
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

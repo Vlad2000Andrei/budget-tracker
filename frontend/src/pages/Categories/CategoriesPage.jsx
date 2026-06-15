@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import axiosInstance from '../../api/axiosInstance';
 import styles from './CategoriesPage.module.css';
 import { PRESET_ICONS, getCategoryIcon } from '../../api/utils';

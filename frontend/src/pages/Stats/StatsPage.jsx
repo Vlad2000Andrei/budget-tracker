@@ -384,7 +384,7 @@ export default function StatsPage() {
       }
     });
 
-    const formatBreakdown = (map, total, type) => {
+    const formatBreakdown = (map, total) => {
       const list = [];
       map.forEach((sum, catId) => {
         const cat = categories.find(c => c.id === catId);
@@ -437,15 +437,15 @@ export default function StatsPage() {
     return {
       EXPENSE: {
         total: totalExpenses,
-        categories: formatBreakdown(expenseMap, totalExpenses, 'EXPENSE'),
+        categories: formatBreakdown(expenseMap, totalExpenses),
       },
       INCOME: {
         total: totalIncome,
-        categories: formatBreakdown(incomeMap, totalIncome, 'INCOME'),
+        categories: formatBreakdown(incomeMap, totalIncome),
       },
       SAVINGS: {
         total: totalSavings,
-        categories: formatBreakdown(savingsMap, totalSavings, 'SAVINGS'),
+        categories: formatBreakdown(savingsMap, totalSavings),
       },
     };
   }, [dateSplitTransactions.current, categories]);
