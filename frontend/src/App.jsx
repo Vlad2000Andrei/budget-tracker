@@ -8,8 +8,10 @@ import GoalsPage from './pages/Goals/GoalsPage';
 import AccountsPage from './pages/Accounts/AccountsPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import CategoriesPage from './pages/Categories/CategoriesPage';
+import StatsPage from './pages/Stats/StatsPage';
 
 import WelcomePage from './pages/Welcome/WelcomePage';
+
 
 function ProtectedRouteMain({ children }) {
   const { isAuthenticated, user } = useAuth();
@@ -74,6 +76,7 @@ export default function App() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="stats" element={<StatsPage />} />
         <Route path="goals" element={<GoalsPage />} />
         <Route path="accounts" element={<AccountsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
