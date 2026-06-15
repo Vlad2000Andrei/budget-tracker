@@ -18,10 +18,20 @@ const MOBILE_NAV_ITEMS = [
     label: 'Dashboard',
   },
   {
+    to: '/stats',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/>
+      </svg>
+    ),
+    label: 'Stats',
+  },
+  {
     to: '/goals',
     icon: (
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M19.07 4.93A10 10 0 0 0 6.99 3.34L8.47 4.82A8 8 0 0 1 20 12a8 8 0 0 1-8 8 8 8 0 0 1-7.18-4.47L3.34 17.01A10 10 0 1 0 19.07 4.93zM11 8v5l4.25 2.52.77-1.29-3.52-2.09V8H11z"/>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+        <path d="M21 3h-5l1.8 1.8-6.2 6.2 1.4 1.4 6.2-6.2L21 8V3z"/>
       </svg>
     ),
     label: 'Goals',
@@ -30,7 +40,7 @@ const MOBILE_NAV_ITEMS = [
     to: '/accounts',
     icon: (
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M4 4h16v2H4V4zm0 14h16v2H4v-2zm0-7h16v2H4v-2zm12 3.5L21.5 12 16 9.5V13h-4v2h4v2.5z" />
+        <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2-.9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
       </svg>
     ),
     label: 'Accounts',

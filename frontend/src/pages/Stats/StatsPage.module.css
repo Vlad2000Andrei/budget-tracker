@@ -98,20 +98,10 @@
   gap: 20px;
 }
 
-.sidebar.collapsed {
-  width: 56px;
-  padding: 16px 8px;
-  align-items: center;
-}
-
 .sidebarHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.sidebar.collapsed .sidebarHeader h3 {
-  display: none;
 }
 
 .sidebarHeader h3 {
@@ -119,25 +109,6 @@
   font-weight: 600;
   color: var(--md-on-surface);
   margin: 0;
-}
-
-.collapseToggleBtn {
-  background: none;
-  border: none;
-  color: var(--md-on-surface-variant);
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--md-shape-full);
-  transition: background-color var(--md-duration-short) var(--md-easing-standard);
-}
-
-.collapseToggleBtn:hover {
-  background-color: var(--md-surface-container-high);
 }
 
 .sidebarContent {
@@ -285,7 +256,7 @@
 
 /* CATEGORY CASHFLOW BREAKDOWN CARD */
 .cashflowBreakdownCard {
-  background-color: var(--md-surface-container-high);
+  background-color: var(--md-surface-container-low);
   border-radius: var(--md-shape-large);
   border: 1px solid var(--md-outline-variant);
   padding: 24px;
@@ -326,10 +297,10 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  background-color: var(--md-surface-container-low);
-  padding: 16px;
-  border-radius: var(--md-shape-medium);
-  border: 1px solid var(--md-outline-variant);
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  border: none;
 }
 
 .cashflowTypeSection h4 {
@@ -455,15 +426,19 @@
 }
 
 .segmentBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
   background: none;
   border: none;
-  padding: 8px 14px;
+  padding: 8px 12px;
   font-size: var(--md-body-medium-size);
   font-weight: 500;
   color: var(--md-on-surface-variant);
   border-radius: var(--md-shape-small);
   cursor: pointer;
   transition: all var(--md-duration-short) var(--md-easing-standard);
+  white-space: nowrap;
 }
 
 .segmentBtn:hover {
@@ -477,6 +452,31 @@
   box-shadow: var(--md-elevation-1);
 }
 
+.segmentBtn .btnIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.segmentBtn .btnLabel {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-left: 0;
+  transition: max-width var(--md-duration-medium) var(--md-easing-standard),
+              opacity var(--md-duration-medium) var(--md-easing-standard),
+              margin var(--md-duration-medium) var(--md-easing-standard);
+}
+
+.segmentBtnActive .btnLabel {
+  max-width: 160px;
+  opacity: 1;
+  margin-left: 6px;
+  transition: max-width var(--md-duration-medium) var(--md-easing-standard) var(--md-duration-medium),
+              opacity var(--md-duration-medium) var(--md-easing-standard) var(--md-duration-medium),
+              margin var(--md-duration-medium) var(--md-easing-standard) var(--md-duration-medium);
+}
+
 .chartTypeToggle {
   display: flex;
   background-color: var(--md-surface-container-high);
@@ -486,15 +486,19 @@
 }
 
 .chartToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
   background: none;
   border: none;
-  padding: 6px 12px;
+  padding: 6px 10px;
   font-size: var(--md-label-medium-size);
   font-weight: 500;
   border-radius: var(--md-shape-small);
   color: var(--md-on-surface-variant);
   cursor: pointer;
   transition: all var(--md-duration-short) var(--md-easing-standard);
+  white-space: nowrap;
 }
 
 .chartToggleBtn:hover {
@@ -506,6 +510,31 @@
   color: var(--md-primary);
   font-weight: 600;
   box-shadow: var(--md-elevation-1);
+}
+
+.chartToggleBtn .btnIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chartToggleBtn .btnLabel {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-left: 0;
+  transition: max-width var(--md-duration-medium) var(--md-easing-standard),
+              opacity var(--md-duration-medium) var(--md-easing-standard),
+              margin var(--md-duration-medium) var(--md-easing-standard);
+}
+
+.chartToggleBtnActive .btnLabel {
+  max-width: 80px;
+  opacity: 1;
+  margin-left: 4px;
+  transition: max-width var(--md-duration-medium) var(--md-easing-standard) var(--md-duration-medium),
+              opacity var(--md-duration-medium) var(--md-easing-standard) var(--md-duration-medium),
+              margin var(--md-duration-medium) var(--md-easing-standard) var(--md-duration-medium);
 }
 
 .chartWrapper {
@@ -941,21 +970,96 @@
     grid-template-columns: 1fr;
   }
 
+  /* Backdrop overlay */
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: var(--md-scrim);
+    z-index: 290;
+    animation: fadeIn 200ms var(--md-easing-decelerate);
+  }
+
+  /* Off-canvas sidebar sliding drawer */
   .sidebar {
-    width: 100% !important;
+    position: fixed;
+    top: 0;
+    left: -320px;
+    width: 300px !important;
+    height: 100vh;
+    z-index: 295;
+    background-color: var(--md-surface-container-high);
+    border-radius: 0;
+    border: none;
+    border-right: 1px solid var(--md-outline-variant);
+    box-shadow: var(--md-elevation-3);
+    overflow-y: auto;
+    transition: transform var(--md-duration-medium) var(--md-easing-standard);
+    margin: 0;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .sidebar.mobileOpen {
+    transform: translateX(320px);
   }
 
   .sidebarHeader h3 {
     display: block !important;
   }
 
-  .sidebar.collapsed {
-    padding: 20px;
-    align-items: stretch;
+  .mobileCloseBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--md-on-surface-variant);
+    font-size: 20px;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--md-shape-full);
+    transition: background-color var(--md-duration-short);
   }
 
-  .collapseToggleBtn {
-    display: none;
+  .mobileCloseBtn:hover {
+    background-color: var(--md-surface-variant);
+  }
+
+  .mobileFilterToggleBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--md-secondary-container);
+    color: var(--md-on-secondary-container);
+    border: none;
+    border-radius: var(--md-shape-button);
+    padding: 10px 16px;
+    font-size: var(--md-body-medium-size);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--md-duration-short) var(--md-easing-standard);
+  }
+
+  .mobileFilterToggleBtn:hover {
+    background-color: var(--md-outline-variant);
+  }
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 16px 10px;
+  }
+  .chartWrapper {
+    min-height: 240px;
+  }
+  .cashflowBreakdownCard {
+    padding: 16px;
+  }
+  .kpiCard {
+    padding: 16px;
   }
 }
 

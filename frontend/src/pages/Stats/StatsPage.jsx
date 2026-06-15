@@ -29,6 +29,14 @@ function fmt(amount, currency = 'USD') {
   }).format(amount);
 }
 
+// Formats tick values compactly for mobile chart space optimization
+function formatCompact(value) {
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    compactDisplay: 'short',
+  }).format(value);
+}
+
 // Visual category icon retriever
 // Visual category icon retriever
 function getIcon(icon) {
@@ -92,6 +100,19 @@ export default function StatsPage() {
   const { user } = useAuth();
   const defaultCurrency = user?.defaultCurrency || 'USD';
 
+  // Mobile layout states
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 992);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // API Data
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -107,7 +128,6 @@ export default function StatsPage() {
   const [customEnd, setCustomEnd] = useState('');
 
   // UI layout state
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [metricTab, setMetricTab] = useState('EXPENSE'); // 'EXPENSE', 'INCOME', 'SAVINGS', 'NET_CASH_FLOW', 'BALANCE_EVOLUTION'
   const [chartType, setChartType] = useState('line'); // 'pie', 'bar', 'line'
   const [excludeModalOpen, setExcludeModalOpen] = useState(false);
@@ -738,6 +758,11 @@ export default function StatsPage() {
 
   return (
     <div className={styles.container}>
+      {/* MOBILE FILTER DRAWER BACKDROP */}
+      {isMobile && isMobileFilterOpen && (
+        <div className={styles.backdrop} onClick={() => setIsMobileFilterOpen(false)} />
+      )}
+
       {/* HEADER SECTION */}
       <header className={styles.header}>
         <div className={styles.headerTitleArea}>
@@ -748,6 +773,28 @@ export default function StatsPage() {
           </div>
         </div>
         <div className={styles.headerControls}>
+          <button
+            onClick={() => setIsMobileFilterOpen(true)}
+            className={styles.mobileFilterToggleBtn}
+            aria-label="Open filters"
+            title="Filters & Exclusions"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            <span>Filters</span>
+          </button>
+
           <select
             value={periodType}
             onChange={(e) => setPeriodType(e.target.value)}
@@ -785,21 +832,21 @@ export default function StatsPage() {
 
       <div className={styles.layoutGrid}>
         {/* LEFT FILTERS SIDEBAR */}
-        <aside className={`${styles.sidebar} ${isSidebarCollapsed ? styles.collapsed : ''}`}>
+        <aside className={`${styles.sidebar} ${isMobileFilterOpen ? styles.mobileOpen : ''}`}>
           <div className={styles.sidebarHeader}>
             <h3>Filters & Exclusions</h3>
-            <button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className={styles.collapseToggleBtn}
-              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              title={isSidebarCollapsed ? 'Expand Filters' : 'Hide Filters'}
-            >
-              {isSidebarCollapsed ? '▶' : '◀'}
-            </button>
+            {isMobile && (
+              <button
+                onClick={() => setIsMobileFilterOpen(false)}
+                className={styles.mobileCloseBtn}
+                aria-label="Close filters"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
-          {!isSidebarCollapsed && (
-            <div className={styles.sidebarContent}>
+          <div className={styles.sidebarContent}>
               {/* Accounts Checklist */}
               <div className={styles.filterGroup}>
                 <h4>Accounts</h4>
@@ -957,7 +1004,6 @@ export default function StatsPage() {
                 )}
               </div>
             </div>
-          )}
         </aside>
 
         {/* RIGHT ANALYTICS CONTENT AREA */}
@@ -965,7 +1011,7 @@ export default function StatsPage() {
           {/* CATEGORY CASHFLOW BREAKDOWN CARD */}
           <section className={styles.cashflowBreakdownCard}>
             <div className={styles.cashflowCardHeader}>
-              <h3>Category Cashflow Breakdown</h3>
+              <h3>Categories</h3>
               <span className={styles.helpBadge}>Current period aggregates</span>
             </div>
             
@@ -1135,31 +1181,64 @@ export default function StatsPage() {
                   onClick={() => { setMetricTab('EXPENSE'); setChartType('pie'); }}
                   className={`${styles.segmentBtn} ${metricTab === 'EXPENSE' ? styles.segmentBtnActive : ''}`}
                 >
-                  Spending
+                  <span className={styles.btnIcon}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="2" y="5" width="20" height="14" rx="2" ry="2" />
+                      <line x1="2" y1="10" x2="22" y2="10" />
+                    </svg>
+                  </span>
+                  <span className={styles.btnLabel}>Spending</span>
                 </button>
                 <button
                   onClick={() => { setMetricTab('INCOME'); setChartType('pie'); }}
                   className={`${styles.segmentBtn} ${metricTab === 'INCOME' ? styles.segmentBtnActive : ''}`}
                 >
-                  Income
+                  <span className={styles.btnIcon}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="2" y="6" width="20" height="12" rx="2" />
+                      <circle cx="12" cy="12" r="2" />
+                      <path d="M6 12h.01M18 12h.01" />
+                    </svg>
+                  </span>
+                  <span className={styles.btnLabel}>Income</span>
                 </button>
                 <button
                   onClick={() => { setMetricTab('SAVINGS'); setChartType('pie'); }}
                   className={`${styles.segmentBtn} ${metricTab === 'SAVINGS' ? styles.segmentBtnActive : ''}`}
                 >
-                  Savings
+                  <span className={styles.btnIcon}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M19 5c-1.5 0-2.8 1.4-3 2-2.2-1.9-5.5-1.9-7.7 0C8 6.4 6.7 5 5 5 3 5 2 7 2 9c0 4 3 7 6 7h1c.6 0 1.1-.4 1.3-.9l.5-1.1c.3-.7 1-.9 1.7-.9h1c.7 0 1.4.2 1.7.9l.5 1.1c.2.5.7.9 1.3.9h1c3 0 6-3 6-7 0-2-1-4-3-4z" />
+                      <path d="M15 16v3a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2" />
+                      <path d="M10 16v3a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-2" />
+                      <path d="M9 10h.01" />
+                    </svg>
+                  </span>
+                  <span className={styles.btnLabel}>Savings</span>
                 </button>
                 <button
                   onClick={() => { setMetricTab('NET_CASH_FLOW'); setChartType('line'); }}
                   className={`${styles.segmentBtn} ${metricTab === 'NET_CASH_FLOW' ? styles.segmentBtnActive : ''}`}
                 >
-                  Net Cash Flow
+                  <span className={styles.btnIcon}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <line x1="12" y1="2" x2="12" y2="22" />
+                      <line x1="5" y1="7" x2="19" y2="7" />
+                      <path d="M19 7l2 6h-6l2-6M5 7l2 6H1l2-6" />
+                    </svg>
+                  </span>
+                  <span className={styles.btnLabel}>Net Cash Flow</span>
                 </button>
                 <button
                   onClick={() => { setMetricTab('BALANCE_EVOLUTION'); setChartType('line'); }}
                   className={`${styles.segmentBtn} ${metricTab === 'BALANCE_EVOLUTION' ? styles.segmentBtnActive : ''}`}
                 >
-                  Balance Evolution
+                  <span className={styles.btnIcon}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 21h18M3 10h18M5 6l7-4 7 4M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
+                    </svg>
+                  </span>
+                  <span className={styles.btnLabel}>Balance Evolution</span>
                 </button>
               </div>
 
@@ -1171,21 +1250,40 @@ export default function StatsPage() {
                     className={`${styles.chartToggleBtn} ${chartType === 'pie' ? styles.chartToggleBtnActive : ''}`}
                     title="Donut Chart"
                   >
-                    Donut
+                    <span className={styles.btnIcon}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+                        <path d="M22 12A10 10 0 0 0 12 2v10z" />
+                      </svg>
+                    </span>
+                    <span className={styles.btnLabel}>Donut</span>
                   </button>
                   <button
                     onClick={() => setChartType('bar')}
                     className={`${styles.chartToggleBtn} ${chartType === 'bar' ? styles.chartToggleBtnActive : ''}`}
                     title="Bar Chart"
                   >
-                    Bar
+                    <span className={styles.btnIcon}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <line x1="18" y1="20" x2="18" y2="10" />
+                        <line x1="12" y1="20" x2="12" y2="4" />
+                        <line x1="6" y1="20" x2="6" y2="14" />
+                      </svg>
+                    </span>
+                    <span className={styles.btnLabel}>Bar</span>
                   </button>
                   <button
                     onClick={() => setChartType('line')}
                     className={`${styles.chartToggleBtn} ${chartType === 'line' ? styles.chartToggleBtnActive : ''}`}
                     title="Trend Line"
                   >
-                    Line
+                    <span className={styles.btnIcon}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M3 3v18h18" />
+                        <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
+                      </svg>
+                    </span>
+                    <span className={styles.btnLabel}>Line</span>
                   </button>
                 </div>
               )}
@@ -1199,7 +1297,7 @@ export default function StatsPage() {
                   <p>No matching transactions found for the selected parameters.</p>
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={320}>
+                <ResponsiveContainer width="100%" height={isMobile ? 240 : 320}>
                   {chartType === 'pie' && metricTab !== 'NET_CASH_FLOW' && metricTab !== 'BALANCE_EVOLUTION' ? (
                     <PieChart>
                       <Pie
@@ -1220,9 +1318,9 @@ export default function StatsPage() {
                       <Tooltip formatter={(value) => fmt(value, defaultCurrency)} />
                     </PieChart>
                   ) : chartType === 'bar' && metricTab !== 'NET_CASH_FLOW' && metricTab !== 'BALANCE_EVOLUTION' ? (
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
-                      <XAxis dataKey="name" stroke="var(--md-outline)" fontSize={12} />
-                      <YAxis stroke="var(--md-outline)" fontSize={12} />
+                    <BarChart data={chartData} margin={isMobile ? { top: 10, right: 5, left: -25, bottom: 0 } : { top: 10, right: 10, left: 10, bottom: 20 }}>
+                      <XAxis dataKey="name" stroke="var(--md-outline)" fontSize={isMobile ? 10 : 12} />
+                      <YAxis stroke="var(--md-outline)" fontSize={isMobile ? 10 : 12} tickFormatter={formatCompact} width={isMobile ? 30 : 45} />
                       <Tooltip formatter={(value) => fmt(value, defaultCurrency)} />
                       <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                         {chartData.map((entry, index) => (
@@ -1231,15 +1329,15 @@ export default function StatsPage() {
                       </Bar>
                     </BarChart>
                   ) : metricTab === 'NET_CASH_FLOW' ? (
-                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                    <AreaChart data={chartData} margin={isMobile ? { top: 10, right: 5, left: -25, bottom: 0 } : { top: 10, right: 10, left: 10, bottom: 20 }}>
                       <defs>
                         <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="var(--md-primary)" stopOpacity={0.4}/>
                           <stop offset="95%" stopColor="var(--md-primary)" stopOpacity={0.0}/>
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="date" stroke="var(--md-outline)" fontSize={11} />
-                      <YAxis stroke="var(--md-outline)" fontSize={12} />
+                      <XAxis dataKey="date" stroke="var(--md-outline)" fontSize={isMobile ? 9 : 11} />
+                      <YAxis stroke="var(--md-outline)" fontSize={isMobile ? 10 : 12} tickFormatter={formatCompact} width={isMobile ? 30 : 45} />
                       <Tooltip formatter={(value) => fmt(value, defaultCurrency)} />
                       <Legend />
                       <Area name="Net cash flow" type="monotone" dataKey="netFlow" stroke="var(--md-primary)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorNet)" />
@@ -1247,23 +1345,23 @@ export default function StatsPage() {
                       <Line name="Expenses" type="monotone" dataKey="EXPENSE" stroke="var(--md-error)" strokeWidth={1.5} dot={false} />
                     </AreaChart>
                   ) : metricTab === 'BALANCE_EVOLUTION' ? (
-                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                    <AreaChart data={chartData} margin={isMobile ? { top: 10, right: 5, left: -25, bottom: 0 } : { top: 10, right: 10, left: 10, bottom: 20 }}>
                       <defs>
                         <linearGradient id="colorBal" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="var(--md-tertiary)" stopOpacity={0.3}/>
                           <stop offset="95%" stopColor="var(--md-tertiary)" stopOpacity={0.0}/>
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="date" stroke="var(--md-outline)" fontSize={11} />
-                      <YAxis stroke="var(--md-outline)" fontSize={12} />
+                      <XAxis dataKey="date" stroke="var(--md-outline)" fontSize={isMobile ? 9 : 11} />
+                      <YAxis stroke="var(--md-outline)" fontSize={isMobile ? 10 : 12} tickFormatter={formatCompact} width={isMobile ? 30 : 45} />
                       <Tooltip formatter={(value) => fmt(value, defaultCurrency)} />
                       <Area name="Cumulative assets" type="monotone" dataKey="balance" stroke="var(--md-tertiary)" strokeWidth={3} fillOpacity={1} fill="url(#colorBal)" />
                     </AreaChart>
                   ) : (
                     // Timeline Trend Line for specific Categories (EXPENSE, INCOME, SAVINGS)
-                    <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
-                      <XAxis dataKey="date" stroke="var(--md-outline)" fontSize={11} />
-                      <YAxis stroke="var(--md-outline)" fontSize={12} />
+                    <LineChart data={chartData} margin={isMobile ? { top: 10, right: 5, left: -25, bottom: 0 } : { top: 10, right: 10, left: 10, bottom: 20 }}>
+                      <XAxis dataKey="date" stroke="var(--md-outline)" fontSize={isMobile ? 9 : 11} />
+                      <YAxis stroke="var(--md-outline)" fontSize={isMobile ? 10 : 12} tickFormatter={formatCompact} width={isMobile ? 30 : 45} />
                       <Tooltip formatter={(value) => fmt(value, defaultCurrency)} />
                       <Line name="Daily value" type="monotone" dataKey={metricTab} stroke="var(--md-primary)" strokeWidth={2.5} activeDot={{ r: 6 }} />
                     </LineChart>
