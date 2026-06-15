@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import AddTransactionModal from '../AddTransactionModal/AddTransactionModal';
 import styles from './TransactionLog.module.css';
 
-const TYPE_FILTER_OPTIONS = ['All', 'INCOME', 'EXPENSE', 'SAVINGS', 'MOVE'];
+const TYPE_FILTER_OPTIONS = ['INCOME', 'EXPENSE', 'SAVINGS', 'MOVE'];
 
 function fmt(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -13,6 +13,30 @@ function fmt(amount, currency = 'USD') {
     currency,
     minimumFractionDigits: 2,
   }).format(Math.abs(amount));
+}
+
+function formatDateHeader(dateStr) {
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  
+  const dateObj = new Date(year, month, day);
+  
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  
+  const isToday = dateObj.toDateString() === today.toDateString();
+  const isYesterday = dateObj.toDateString() === yesterday.toDateString();
+  
+  const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+  const formatted = dateObj.toLocaleDateString('en-US', options);
+  
+  if (isToday) return `Today — ${formatted}`;
+  if (isYesterday) return `Yesterday — ${formatted}`;
+  return formatted;
 }
 
 function TypeBadge({ type }) {
@@ -298,7 +322,10 @@ function AllTab({ categoriesMap, accountsMap }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('All');
+  const [accountFilter, setAccountFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const searchInputRef = useRef(null);
   const [selectedTx, setSelectedTx] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
 
@@ -322,6 +349,24 @@ function AllTab({ categoriesMap, accountsMap }) {
     };
   }, [loadTransactions]);
 
+  useEffect(() => {
+    if (searchExpanded && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [searchExpanded]);
+
+  const handleSearchClick = () => {
+    if (searchExpanded) {
+      if (search) {
+        setSearch('');
+      } else {
+        setSearchExpanded(false);
+      }
+    } else {
+      setSearchExpanded(true);
+    }
+  };
+
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -333,6 +378,19 @@ function AllTab({ categoriesMap, accountsMap }) {
 
   const filtered = transactions.filter((t) => {
     if (typeFilter !== 'All' && t.type !== typeFilter) return false;
+    
+    if (accountFilter !== 'All') {
+      const isMove = t.type === 'MOVE';
+      if (isMove) {
+        const fromMatch = t.fromAccountId ? String(t.fromAccountId) === accountFilter : false;
+        const toMatch = t.toAccountId ? String(t.toAccountId) === accountFilter : false;
+        if (!fromMatch && !toMatch) return false;
+      } else {
+        const match = t.accountId ? String(t.accountId) === accountFilter : false;
+        if (!match) return false;
+      }
+    }
+
     const isMove = t.type === 'MOVE';
     if (search) {
       const query = search.toLowerCase();
@@ -355,31 +413,58 @@ function AllTab({ categoriesMap, accountsMap }) {
       <div>
         {/* Filter bar */}
         <div className={styles.filterBar}>
-          <div className={styles.searchWrap}>
-            <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 8.5 15a6.5 6.5 0 0 0 4.23-1.57l.27.28v.79l5 4.99L19.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-            </svg>
+          <div className={`${styles.searchWrap} ${searchExpanded || search ? styles.searchWrapExpanded : ''}`}>
+            <button
+              type="button"
+              className={styles.searchToggleBtn}
+              onClick={handleSearchClick}
+              aria-label="Toggle search"
+            >
+              <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              {!(searchExpanded || search) && <span className={styles.searchBtnText}>Search</span>}
+            </button>
             <input
+              ref={searchInputRef}
               type="search"
-              placeholder="Search categories…"
+              placeholder="Search..."
               className={styles.searchInput}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onBlur={() => {
+                if (!search) setSearchExpanded(false);
+              }}
               aria-label="Search transactions"
             />
           </div>
-          <div className={styles.chips} role="group" aria-label="Filter by type">
-            {TYPE_FILTER_OPTIONS.map((opt) => (
-              <button
-                key={opt}
-                className={`${styles.chip} ${typeFilter === opt ? styles.chipActive : ''}`}
-                onClick={() => setTypeFilter(opt)}
-                aria-pressed={typeFilter === opt}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
+          
+          <span className={styles.filterGroupLabel}>Type</span>
+          {TYPE_FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt}
+              className={`${styles.chip} ${typeFilter === opt ? styles.chipActive : ''}`}
+              onClick={() => setTypeFilter(typeFilter === opt ? 'All' : opt)}
+              aria-pressed={typeFilter === opt}
+            >
+              {opt.charAt(0).toUpperCase() + opt.slice(1).toLowerCase()}
+            </button>
+          ))}
+
+          <div className={styles.filterDivider} aria-hidden="true" />
+
+          <span className={styles.filterGroupLabel}>Account</span>
+          {Object.entries(accountsMap).map(([id, name]) => (
+            <button
+              key={id}
+              className={`${styles.chip} ${accountFilter === id ? styles.chipActive : ''}`}
+              onClick={() => setAccountFilter(accountFilter === id ? 'All' : id)}
+              aria-pressed={accountFilter === id}
+            >
+              {name}
+            </button>
+          ))}
         </div>
 
         {/* Rows */}
@@ -387,73 +472,95 @@ function AllTab({ categoriesMap, accountsMap }) {
           {filtered.length === 0 && (
             <div className={styles.empty}>No transactions found.</div>
           )}
-          {filtered.map((t) => {
-            const isMove = t.type === 'MOVE';
-            const category = !isMove ? (categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦' }) : null;
-            const accountName = t.accountId ? accountsMap[t.accountId] : null;
-            const isIncome = t.type === 'INCOME';
-            const isSavings = t.type === 'SAVINGS';
-            const isPositiveSavings = isSavings && t.amount > 0;
+          {(() => {
+            let lastDate = null;
+            return filtered.map((t) => {
+              const dateOnly = t.date.split('T')[0];
+              const showHeader = dateOnly !== lastDate;
+              if (showHeader) {
+                lastDate = dateOnly;
+              }
 
-            const isPositive = isIncome || isPositiveSavings;
-            const isMultiCurrency = t.currency && t.currency !== defaultCurrency;
+              const isMove = t.type === 'MOVE';
+              const category = !isMove ? (categoriesMap[t.categoryId] || { name: 'Unknown', icon: '📦' }) : null;
+              const accountName = t.accountId ? accountsMap[t.accountId] : null;
+              const isIncome = t.type === 'INCOME';
+              const isSavings = t.type === 'SAVINGS';
+              const isPositiveSavings = isSavings && t.amount > 0;
 
-            const fromAccountName = isMove ? accountsMap[t.fromAccountId] : null;
-            const toAccountName = isMove ? accountsMap[t.toAccountId] : null;
-            const rowLabel = isMove 
-              ? `Move: ${fromAccountName || 'Unknown'} → ${toAccountName || 'Unknown'}`
-              : (category.breadcrumb || category.name);
+              const isPositive = isIncome || isPositiveSavings;
+              const isMultiCurrency = t.currency && t.currency !== defaultCurrency;
 
-            return (
-              <button
-                key={t.id}
-                className={styles.rowBtn}
-                onClick={() => setSelectedTx(t)}
-                aria-label={`View details for ${isMove ? 'move' : category.name} transaction`}
-              >
-                {isMove ? (
-                  <span className={styles.rowIconSvg} aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                      <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
-                    </svg>
-                  </span>
-                ) : (
-                  <span className={styles.rowIcon} aria-hidden="true">{category.icon}</span>
-                )}
-                <div className={styles.rowMain}>
-                  <div className={styles.rowTop}>
-                    <span className={styles.rowCategory}>
-                      {rowLabel}
-                      {t.recurrenceRuleId && (
-                        <span className={styles.recurringBadge}>
-                          <RecurringIcon />
-                        </span>
-                      )}
-                    </span>
-                    <div className={styles.amountCol}>
-                      <span className={`${styles.rowAmount} ${isMove ? styles.neutralAmount : (isPositive ? styles.positive : styles.negative)}`}>
-                        {isMove ? '' : (isPositive ? '+' : '−')}{fmt(isMultiCurrency ? t.convertedAmount : t.amount, isMultiCurrency ? defaultCurrency : t.currency)}
-                      </span>
-                      {isMultiCurrency && (
-                        <span className={styles.rowAmountSub}>
-                          {isMove ? '' : (isPositive ? '+' : '−')}{fmt(t.amount, t.currency)}
-                        </span>
-                      )}
+              const fromAccountName = isMove ? accountsMap[t.fromAccountId] : null;
+              const toAccountName = isMove ? accountsMap[t.toAccountId] : null;
+              const rowLabel = isMove 
+                ? `Move: ${fromAccountName || 'Unknown'} → ${toAccountName || 'Unknown'}`
+                : (category.breadcrumb || category.name);
+
+              return (
+                <div key={t.id} style={{ width: '100%' }}>
+                  {showHeader && (
+                    <div className={styles.dateSeparator}>
+                      <span className={styles.dateText}>{formatDateHeader(dateOnly)}</span>
                     </div>
-                  </div>
-                  <div className={styles.rowBottom}>
-                    <TypeBadge type={t.type} />
-                    {!isMove && accountName && <span className={styles.rowMeta}>{accountName}</span>}
-                    <span className={styles.rowDate}>{t.date.split('T')[0]}</span>
-                    {t.notes && <span className={styles.rowNotes} title={t.notes}>📝</span>}
-                  </div>
+                  )}
+                  <button
+                    className={styles.rowBtn}
+                    onClick={() => setSelectedTx(t)}
+                    aria-label={`View details for ${isMove ? 'move' : category.name} transaction`}
+                  >
+                    {isMove ? (
+                      <span className={styles.rowIconSvg} aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                          <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
+                        </svg>
+                      </span>
+                    ) : (
+                      <span className={styles.rowIcon} aria-hidden="true">{category.icon}</span>
+                    )}
+                    <div className={styles.rowMain}>
+                      <div className={styles.rowTop}>
+                        <span className={styles.rowCategory}>
+                          {rowLabel}
+                          {t.recurrenceRuleId && (
+                            <span className={styles.recurringBadge}>
+                              <RecurringIcon />
+                            </span>
+                          )}
+                        </span>
+                        <div className={styles.amountCol}>
+                          <span className={`${styles.rowAmount} ${isMove ? styles.neutralAmount : (isPositive ? styles.positive : styles.negative)}`}>
+                            {isMove ? '' : (isPositive ? '+' : '−')}{fmt(isMultiCurrency ? t.convertedAmount : t.amount, isMultiCurrency ? defaultCurrency : t.currency)}
+                          </span>
+                          {isMultiCurrency && (
+                            <span className={styles.rowAmountSub}>
+                              {isMove ? '' : (isPositive ? '+' : '−')}{fmt(t.amount, t.currency)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {t.notes && (
+                        <div className={styles.rowNotesInline} title={t.notes}>
+                          <svg className={styles.rowNoteIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                          <span>{t.notes}</span>
+                        </div>
+                      )}
+                      <div className={styles.rowBottom}>
+                        <TypeBadge type={t.type} />
+                        {!isMove && accountName && <span className={styles.rowMeta}>{accountName}</span>}
+                      </div>
+                    </div>
+                    <svg className={styles.rowChevron} viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+                      <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                    </svg>
+                  </button>
                 </div>
-                <svg className={styles.rowChevron} viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
-                  <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-                </svg>
-              </button>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
 
