@@ -1027,7 +1027,7 @@ export default function StatsPage() {
                       <div key={cat.id} className={styles.breakdownRowGroup}>
                         <div className={styles.breakdownRow}>
                           <span className={styles.breakdownLabel}>
-                            {getIcon(cat.icon)} {cat.name}
+                            {cat.name}
                           </span>
                           <span className={styles.breakdownValue}>
                             {fmt(cat.subTotal || cat.value, defaultCurrency)} ({cat.pct.toFixed(1)}%)
@@ -1036,7 +1036,7 @@ export default function StatsPage() {
                         <div className={styles.fillTrack}>
                           <div
                             className={styles.fillBar}
-                            style={{ width: `${cat.pct}%`, backgroundColor: cat.color }}
+                            style={{ width: `${cat.pct}%`, backgroundColor: 'var(--md-error)' }}
                           />
                         </div>
                         {/* Render Subcategories inline if they exist */}
@@ -1046,7 +1046,7 @@ export default function StatsPage() {
                               <div key={child.id} className={styles.breakdownChildRowGroup}>
                                 <div className={styles.breakdownChildRow}>
                                   <span className={styles.breakdownChildLabel}>
-                                    ↳ {getIcon(child.icon)} {child.name}
+                                    {child.name}
                                   </span>
                                   <span className={styles.breakdownChildValue}>
                                     {fmt(child.value, defaultCurrency)} ({child.pct.toFixed(1)}%)
@@ -1055,7 +1055,7 @@ export default function StatsPage() {
                                 <div className={`${styles.fillTrack} ${styles.childTrack}`}>
                                   <div
                                     className={styles.fillBar}
-                                    style={{ width: `${child.pct}%`, backgroundColor: child.color }}
+                                    style={{ width: `${child.pct}%`, backgroundColor: 'var(--md-error)' }}
                                   />
                                 </div>
                               </div>
@@ -1068,8 +1068,10 @@ export default function StatsPage() {
                 )}
               </div>
 
-              {/* Income breakdown */}
-              <div className={styles.cashflowTypeSection}>
+              {/* Stacked Right Column: Income & Savings */}
+              <div className={styles.cashflowRightColumn}>
+                {/* Income breakdown */}
+                <div className={styles.cashflowTypeSection}>
                 <h4 className={styles.incomeTypeTitle}>Income: {fmt(categoryCashflowBreakdown.INCOME.total, defaultCurrency)}</h4>
                 {categoryCashflowBreakdown.INCOME.categories.length === 0 ? (
                   <p className={styles.emptyBreakdownText}>No income in this period.</p>
@@ -1079,7 +1081,7 @@ export default function StatsPage() {
                       <div key={cat.id} className={styles.breakdownRowGroup}>
                         <div className={styles.breakdownRow}>
                           <span className={styles.breakdownLabel}>
-                            {getIcon(cat.icon)} {cat.name}
+                            {cat.name}
                           </span>
                           <span className={styles.breakdownValue}>
                             {fmt(cat.subTotal || cat.value, defaultCurrency)} ({cat.pct.toFixed(1)}%)
@@ -1088,7 +1090,7 @@ export default function StatsPage() {
                         <div className={styles.fillTrack}>
                           <div
                             className={styles.fillBar}
-                            style={{ width: `${cat.pct}%`, backgroundColor: cat.color }}
+                            style={{ width: `${cat.pct}%`, backgroundColor: 'var(--md-success)' }}
                           />
                         </div>
                         {cat.children && cat.children.length > 0 && (
@@ -1097,7 +1099,7 @@ export default function StatsPage() {
                               <div key={child.id} className={styles.breakdownChildRowGroup}>
                                 <div className={styles.breakdownChildRow}>
                                   <span className={styles.breakdownChildLabel}>
-                                    ↳ {getIcon(child.icon)} {child.name}
+                                    {child.name}
                                   </span>
                                   <span className={styles.breakdownChildValue}>
                                     {fmt(child.value, defaultCurrency)} ({child.pct.toFixed(1)}%)
@@ -1106,7 +1108,7 @@ export default function StatsPage() {
                                 <div className={`${styles.fillTrack} ${styles.childTrack}`}>
                                   <div
                                     className={styles.fillBar}
-                                    style={{ width: `${child.pct}%`, backgroundColor: child.color }}
+                                    style={{ width: `${child.pct}%`, backgroundColor: 'var(--md-success)' }}
                                   />
                                 </div>
                               </div>
@@ -1130,7 +1132,7 @@ export default function StatsPage() {
                       <div key={cat.id} className={styles.breakdownRowGroup}>
                         <div className={styles.breakdownRow}>
                           <span className={styles.breakdownLabel}>
-                            {getIcon(cat.icon)} {cat.name}
+                            {cat.name}
                           </span>
                           <span className={styles.breakdownValue}>
                             {fmt(cat.subTotal || cat.value, defaultCurrency)} ({cat.pct.toFixed(1)}%)
@@ -1139,7 +1141,7 @@ export default function StatsPage() {
                         <div className={styles.fillTrack}>
                           <div
                             className={styles.fillBar}
-                            style={{ width: `${cat.pct}%`, backgroundColor: cat.color }}
+                            style={{ width: `${cat.pct}%`, backgroundColor: 'var(--md-tertiary)' }}
                           />
                         </div>
                         {cat.children && cat.children.length > 0 && (
@@ -1148,7 +1150,7 @@ export default function StatsPage() {
                               <div key={child.id} className={styles.breakdownChildRowGroup}>
                                 <div className={styles.breakdownChildRow}>
                                   <span className={styles.breakdownChildLabel}>
-                                    ↳ {getIcon(child.icon)} {child.name}
+                                    {child.name}
                                   </span>
                                   <span className={styles.breakdownChildValue}>
                                     {fmt(child.value, defaultCurrency)} ({child.pct.toFixed(1)}%)
@@ -1157,7 +1159,7 @@ export default function StatsPage() {
                                 <div className={`${styles.fillTrack} ${styles.childTrack}`}>
                                   <div
                                     className={styles.fillBar}
-                                    style={{ width: `${child.pct}%`, backgroundColor: child.color }}
+                                    style={{ width: `${child.pct}%`, backgroundColor: 'var(--md-tertiary)' }}
                                   />
                                 </div>
                               </div>
@@ -1168,6 +1170,7 @@ export default function StatsPage() {
                     ))}
                   </div>
                 )}
+              </div>
               </div>
             </div>
           </section>
