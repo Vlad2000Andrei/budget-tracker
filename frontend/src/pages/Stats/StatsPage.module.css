@@ -357,6 +357,7 @@
 }
 
 .fillTrack {
+  display: flex;
   height: 6px;
   width: 100%;
   background-color: var(--md-surface-variant);
@@ -366,7 +367,6 @@
 
 .fillBar {
   height: 100%;
-  border-radius: var(--md-shape-full);
   transition: width var(--md-duration-medium) var(--md-easing-standard);
 }
 

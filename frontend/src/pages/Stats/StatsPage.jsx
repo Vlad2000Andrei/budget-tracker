@@ -405,33 +405,48 @@ export default function StatsPage() {
       const parents = list.filter(c => c.parentId === null);
       const children = list.filter(c => c.parentId !== null);
 
-      parents.forEach(p => {
-        p.children = children.filter(c => c.parentId === p.id);
-        // Include child values in parent if children exist
-        p.subTotal = p.value + p.children.reduce((acc, c) => acc + c.value, 0);
-      });
-
-      // Add remaining children whose parents had no direct transactions
       children.forEach(c => {
-        if (!parents.some(p => p.id === c.parentId)) {
+        let parent = parents.find(p => p.id === c.parentId);
+        if (!parent) {
           const parentCat = categories.find(cat => cat.id === c.parentId);
           if (parentCat) {
-            parents.push({
+            parent = {
               id: parentCat.id,
               name: parentCat.name,
               icon: parentCat.icon,
               color: muteColor(parentCat.color || '#BEC9C7'),
               value: 0,
-              subTotal: c.value,
-              pct: total > 0 ? (c.value / total) * 100 : 0,
+              pct: 0,
               parentId: null,
-              children: [c],
-            });
+              children: [],
+            };
+            parents.push(parent);
           }
+        }
+        if (parent) {
+          if (!parent.children) {
+            parent.children = [];
+          }
+          parent.children.push(c);
         }
       });
 
-      return parents.sort((a, b) => (b.subTotal || b.value) - (a.subTotal || a.value));
+      parents.forEach(p => {
+        if (!p.children) p.children = [];
+        const childrenSum = p.children.reduce((acc, c) => acc + c.value, 0);
+        p.childrenSum = childrenSum;
+        p.subTotal = p.value + childrenSum;
+        p.subTotalPct = total > 0 ? (p.subTotal / total) * 100 : 0;
+        p.childrenSumPct = total > 0 ? (childrenSum / total) * 100 : 0;
+        p.directPct = total > 0 ? (p.value / total) * 100 : 0;
+      });
+
+      // Sort children inside parents by value descending
+      parents.forEach(p => {
+        p.children.sort((a, b) => b.value - a.value);
+      });
+
+      return parents.sort((a, b) => b.subTotal - a.subTotal);
     };
 
     return {
@@ -1030,14 +1045,28 @@ export default function StatsPage() {
                             {cat.name}
                           </span>
                           <span className={styles.breakdownValue}>
-                            {fmt(cat.subTotal || cat.value, defaultCurrency)} ({cat.pct.toFixed(1)}%)
+                            {fmt(cat.subTotal, defaultCurrency)} ({cat.subTotalPct.toFixed(1)}%)
                           </span>
                         </div>
                         <div className={styles.fillTrack}>
-                          <div
-                            className={styles.fillBar}
-                            style={{ width: `${cat.pct}%`, backgroundColor: 'var(--md-error)' }}
-                          />
+                          {cat.childrenSumPct > 0 && (
+                            <div
+                              className={styles.fillBar}
+                              style={{
+                                width: `${cat.childrenSumPct}%`,
+                                backgroundColor: 'color-mix(in srgb, var(--md-error) 80%, black 20%)',
+                              }}
+                            />
+                          )}
+                          {cat.directPct > 0 && (
+                            <div
+                              className={styles.fillBar}
+                              style={{
+                                width: `${cat.directPct}%`,
+                                backgroundColor: 'color-mix(in srgb, var(--md-error) 55%, white 45%)',
+                              }}
+                            />
+                          )}
                         </div>
                         {/* Render Subcategories inline if they exist */}
                         {cat.children && cat.children.length > 0 && (
@@ -1084,14 +1113,28 @@ export default function StatsPage() {
                             {cat.name}
                           </span>
                           <span className={styles.breakdownValue}>
-                            {fmt(cat.subTotal || cat.value, defaultCurrency)} ({cat.pct.toFixed(1)}%)
+                            {fmt(cat.subTotal, defaultCurrency)} ({cat.subTotalPct.toFixed(1)}%)
                           </span>
                         </div>
                         <div className={styles.fillTrack}>
-                          <div
-                            className={styles.fillBar}
-                            style={{ width: `${cat.pct}%`, backgroundColor: 'var(--md-success)' }}
-                          />
+                          {cat.childrenSumPct > 0 && (
+                            <div
+                              className={styles.fillBar}
+                              style={{
+                                width: `${cat.childrenSumPct}%`,
+                                backgroundColor: 'color-mix(in srgb, var(--md-success) 80%, black 20%)',
+                              }}
+                            />
+                          )}
+                          {cat.directPct > 0 && (
+                            <div
+                              className={styles.fillBar}
+                              style={{
+                                width: `${cat.directPct}%`,
+                                backgroundColor: 'color-mix(in srgb, var(--md-success) 55%, white 45%)',
+                              }}
+                            />
+                          )}
                         </div>
                         {cat.children && cat.children.length > 0 && (
                           <div className={styles.breakdownChildrenRows}>
@@ -1135,14 +1178,28 @@ export default function StatsPage() {
                             {cat.name}
                           </span>
                           <span className={styles.breakdownValue}>
-                            {fmt(cat.subTotal || cat.value, defaultCurrency)} ({cat.pct.toFixed(1)}%)
+                            {fmt(cat.subTotal, defaultCurrency)} ({cat.subTotalPct.toFixed(1)}%)
                           </span>
                         </div>
                         <div className={styles.fillTrack}>
-                          <div
-                            className={styles.fillBar}
-                            style={{ width: `${cat.pct}%`, backgroundColor: 'var(--md-tertiary)' }}
-                          />
+                          {cat.childrenSumPct > 0 && (
+                            <div
+                              className={styles.fillBar}
+                              style={{
+                                width: `${cat.childrenSumPct}%`,
+                                backgroundColor: 'color-mix(in srgb, var(--md-tertiary) 80%, black 20%)',
+                              }}
+                            />
+                          )}
+                          {cat.directPct > 0 && (
+                            <div
+                              className={styles.fillBar}
+                              style={{
+                                width: `${cat.directPct}%`,
+                                backgroundColor: 'color-mix(in srgb, var(--md-tertiary) 55%, white 45%)',
+                              }}
+                            />
+                          )}
                         </div>
                         {cat.children && cat.children.length > 0 && (
                           <div className={styles.breakdownChildrenRows}>
