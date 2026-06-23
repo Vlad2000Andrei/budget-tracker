@@ -20,6 +20,7 @@ public class CategoryDto {
     private String color;
     private CategoryType type;
     private boolean systemWide;
+    private boolean hidden;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

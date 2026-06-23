@@ -31,6 +31,7 @@ public class CategoryService {
     public List<CategoryDto> getCategories(User user) {
         List<Category> categories = categoryRepository.findByUserIdAndSystemWide(user.getId());
         return categories.stream()
+                .filter(c -> !c.isHidden())
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
@@ -224,6 +225,7 @@ public class CategoryService {
                         .type(type)
                         .color("#9C27B0")
                         .icon("swap_horiz")
+                        .hidden(true)
                         .build()));
     }
 
@@ -240,6 +242,7 @@ public class CategoryService {
                 .color(category.getColor())
                 .type(category.getType())
                 .systemWide(category.getUserId() == null)
+                .hidden(category.isHidden())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
                 .build();

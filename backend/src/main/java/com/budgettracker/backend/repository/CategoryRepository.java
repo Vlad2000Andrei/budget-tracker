@@ -60,6 +60,7 @@ public class CategoryRepository {
                     .set(CATEGORIES.ICON, category.getIcon())
                     .set(CATEGORIES.COLOR, category.getColor())
                     .set(CATEGORIES.TYPE, category.getType())
+                    .set(CATEGORIES.HIDDEN, category.isHidden())
                     .set(CATEGORIES.CREATED_AT, now)
                     .set(CATEGORIES.UPDATED_AT, now)
                     .returning()
@@ -72,6 +73,7 @@ public class CategoryRepository {
                     .set(CATEGORIES.ICON, category.getIcon())
                     .set(CATEGORIES.COLOR, category.getColor())
                     .set(CATEGORIES.TYPE, category.getType())
+                    .set(CATEGORIES.HIDDEN, category.isHidden())
                     .set(CATEGORIES.UPDATED_AT, now)
                     .where(CATEGORIES.ID.eq(category.getId()))
                     .execute();
@@ -166,6 +168,7 @@ public class CategoryRepository {
                 .type(record.getType())
                 .createdAt(record.getCreatedAt())
                 .updatedAt(record.getUpdatedAt())
+                .hidden(record.getHidden())
                 .build();
     }
 }

@@ -75,6 +75,32 @@ public class CategoryControllerIntegrationTest {
     }
 
     @Test
+    public void testGetCategories_ExcludesHidden() throws Exception {
+        // Create a visible category
+        categoryRepository.save(Category.builder()
+                .userId(testUser.getId())
+                .name("Visible Category")
+                .type(CategoryType.EXPENSE)
+                .hidden(false)
+                .build());
+
+        // Create a hidden category
+        categoryRepository.save(Category.builder()
+                .userId(testUser.getId())
+                .name("Hidden Category")
+                .type(CategoryType.EXPENSE)
+                .hidden(true)
+                .build());
+
+        mockMvc.perform(get("/v1/categories")
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].name", is("Visible Category")))
+                .andExpect(jsonPath("$[0].hidden", is(false)));
+    }
+
+    @Test
     public void testCreateCategory_Success() throws Exception {
         CreateCategoryRequest request = CreateCategoryRequest.builder()
                 .name("Groceries")

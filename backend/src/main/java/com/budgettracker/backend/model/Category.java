@@ -24,4 +24,5 @@ public class Category {
     private CategoryType type;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean hidden;
 }
