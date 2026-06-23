@@ -260,14 +260,6 @@ public class SavingsGoalService {
         // 3. Convert amount to user's default currency for goal reconciliation
         BigDecimal convertedAmount = currencyExchangeService.convert(amount, request.getCurrency(), user.getDefaultCurrency());
 
-        // 4. Balance guards
-        // fromAccount must have sufficient funds (in fromAccount's native currency)
-        BigDecimal requiredInFromCurrency = currencyExchangeService.convert(amount, request.getCurrency(), fromAccount.getCurrency());
-        if (fromAccount.getBalance().compareTo(requiredInFromCurrency) < 0) {
-            throw new IllegalArgumentException(
-                    "Insufficient balance in source account '" + fromAccount.getName() + "'. Available: "
-                    + fromAccount.getBalance() + " " + fromAccount.getCurrency());
-        }
 
         if (!isDeposit) {
             // Withdrawal: goal must have enough accumulated savings to cover this (if goal is present)

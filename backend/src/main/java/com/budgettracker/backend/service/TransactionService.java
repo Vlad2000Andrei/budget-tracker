@@ -210,13 +210,6 @@ public class TransactionService {
             throw new IllegalArgumentException("Source and destination accounts must be of the same type for a move transaction");
         }
 
-        // Check source account balance native currency requirement
-        BigDecimal requiredInFromCurrency = currencyExchangeService.convert(request.getAmount(), request.getCurrency(), fromAccount.getCurrency());
-        if (fromAccount.getBalance().compareTo(requiredInFromCurrency) < 0) {
-            throw new IllegalArgumentException(
-                    "Insufficient balance in source account '" + fromAccount.getName() + "'. Available: "
-                    + fromAccount.getBalance() + " " + fromAccount.getCurrency());
-        }
 
         // Fetch or create double-entry Categories
         Category expenseCategory = categoryService.getOrCreateTransferCategory(user, CategoryType.EXPENSE);

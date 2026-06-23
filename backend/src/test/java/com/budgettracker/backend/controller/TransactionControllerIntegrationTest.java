@@ -766,6 +766,45 @@ public class TransactionControllerIntegrationTest {
     }
 
     @Test
+    public void testCreateTransfer_InsufficientBalance_Success() throws Exception {
+        Account checkingAccount2 = accountRepository.save(Account.builder()
+                .userId(testUser.getId())
+                .name("EUR Checking 2")
+                .type(AccountType.CHECKING)
+                .balance(new BigDecimal("200.0000"))
+                .currency("EUR")
+                .build());
+
+        com.budgettracker.backend.dto.CreateTransferRequest request = com.budgettracker.backend.dto.CreateTransferRequest.builder()
+                .fromAccountId(eurAccount.getId())
+                .toAccountId(checkingAccount2.getId())
+                .amount(new BigDecimal("1500.00")) // exceeding eurAccount balance of 1000
+                .currency("EUR")
+                .date(LocalDateTime.now())
+                .notes("Transfer exceeding balance")
+                .build();
+
+        mockMvc.perform(post("/v1/transactions/transfer")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.amount", is(1500.0)))
+                .andExpect(jsonPath("$.type", is("MOVE")))
+                .andExpect(jsonPath("$.linkedTransactionId", notNullValue()));
+
+        // Verify balance updates allow negative values:
+        // EUR Checking: 1000 - 1500 = -500
+        Account updatedEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("-500.0000"), updatedEur.getBalance());
+
+        // EUR Checking 2: 200 + 1500 = 1700
+        Account updatedChecking2 = accountRepository.findById(checkingAccount2.getId()).orElseThrow();
+        assertEquals(new BigDecimal("1700.0000"), updatedChecking2.getBalance());
+    }
+
+    @Test
     public void testDeleteTransfer_Cascades() throws Exception {
         // Create two transactions manually and link them to simulate a transfer
         Transaction t1 = transactionRepository.save(Transaction.builder()

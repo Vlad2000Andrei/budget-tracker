@@ -432,7 +432,7 @@ public class SavingsGoalControllerIntegrationTest {
     }
 
     @Test
-    public void testDeposit_InsufficientAccountBalance_ReturnsBadRequest() throws Exception {
+    public void testDeposit_InsufficientAccountBalance_Succeeds() throws Exception {
         String goalJson = mockMvc.perform(post("/v1/savings-goals")
                         .header("X-User-Id", testUser.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -458,8 +458,18 @@ public class SavingsGoalControllerIntegrationTest {
                                 .type(SavingsTransactionType.DEPOSIT)
                                 .date(LocalDateTime.now())
                                 .build())))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message", containsString("Insufficient balance in source account")));
+                .andExpect(status().isCreated());
+
+        // Verify balance updates allow negative values:
+        // Checking: 5000 - 9999 = -4999
+        Account updatedChecking = accountRepository.findById(testAccount.getId()).orElseThrow();
+        assert updatedChecking.getBalance().compareTo(new BigDecimal("-4999.0000")) == 0
+                : "Expected Checking balance -4999 but got " + updatedChecking.getBalance();
+
+        // Savings: 0 + 9999 = 9999
+        Account updatedSavings = accountRepository.findById(savingsAccount.getId()).orElseThrow();
+        assert updatedSavings.getBalance().compareTo(new BigDecimal("9999.0000")) == 0
+                : "Expected Savings balance 9999 but got " + updatedSavings.getBalance();
     }
 
     @Test
@@ -490,9 +500,7 @@ public class SavingsGoalControllerIntegrationTest {
                                 .date(LocalDateTime.now())
                                 .build())))
                 .andExpect(status().isBadRequest())
-                // With two-account model the fromAccount (Savings, balance=0) balance guard fires first.
-                // The goal-balance guard is still exercised indirectly by testWithdrawal_BalanceCredited.
-                .andExpect(jsonPath("$.message", containsString("Insufficient balance in source account")));
+                .andExpect(jsonPath("$.message", containsString("Withdrawal exceeds current savings goal balance")));
     }
 
     @Test
