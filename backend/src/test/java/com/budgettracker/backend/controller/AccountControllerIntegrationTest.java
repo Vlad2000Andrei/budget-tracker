@@ -135,6 +135,7 @@ public class AccountControllerIntegrationTest {
 
         UpdateAccountRequest request = UpdateAccountRequest.builder()
                 .name("New Name")
+                .balance(new BigDecimal("250.75"))
                 .build();
 
         mockMvc.perform(patch("/v1/accounts/" + account.getId())
@@ -142,7 +143,8 @@ public class AccountControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name", is("New Name")));
+                .andExpect(jsonPath("$.name", is("New Name")))
+                .andExpect(jsonPath("$.balance", is(250.75)));
     }
 
     @Test

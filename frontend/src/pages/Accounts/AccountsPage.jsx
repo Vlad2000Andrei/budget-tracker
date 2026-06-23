@@ -82,6 +82,7 @@ export default function AccountsPage() {
     setName(account.name);
     setType(account.type);
     setCurrency(account.currency);
+    setInitialBalance(account.balance.toString());
     setAlert(null);
     setIsFormOpen(true);
   };
@@ -95,10 +96,13 @@ export default function AccountsPage() {
     setAlert(null);
     try {
       if (editingAccount) {
-        // Update Account Name
-        const payload = { name: name.trim() };
+        // Update Account Name and Balance
+        const payload = {
+          name: name.trim(),
+          balance: initialBalance ? parseFloat(initialBalance) : 0,
+        };
         await axiosInstance.patch(`/v1/accounts/${editingAccount.id}`, payload);
-        setAlert({ type: 'success', text: `Account "${editingAccount.name}" renamed to "${payload.name}" successfully.` });
+        setAlert({ type: 'success', text: `Account "${payload.name}" updated successfully.` });
       } else {
         // Create New Account
         const payload = {
@@ -292,22 +296,21 @@ export default function AccountsPage() {
                 />
               </div>
 
-              {/* Initial Balance (Create mode only) */}
-              {!editingAccount && (
-                <div className={styles.formGroup}>
-                  <label htmlFor="account-initial-balance" className={styles.label}>Initial Balance</label>
-                  <input
-                    id="account-initial-balance"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    className={styles.input}
-                    value={initialBalance}
-                    onChange={(e) => setInitialBalance(e.target.value)}
-                  />
-                </div>
-              )}
+              {/* Balance */}
+              <div className={styles.formGroup}>
+                <label htmlFor="account-balance" className={styles.label}>
+                  {editingAccount ? 'Current Balance' : 'Initial Balance'}
+                </label>
+                <input
+                  id="account-balance"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  className={styles.input}
+                  value={initialBalance}
+                  onChange={(e) => setInitialBalance(e.target.value)}
+                />
+              </div>
 
               {/* Type (Create mode only) */}
               <div className={styles.formGroup}>

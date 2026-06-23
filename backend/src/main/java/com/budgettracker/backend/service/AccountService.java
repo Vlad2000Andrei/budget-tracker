@@ -59,8 +59,10 @@ public class AccountService {
         if (!existing.getUserId().equals(user.getId())) {
             throw new ForbiddenActionException("You do not have permission to modify this account");
         }
-
         existing.setName(request.getName());
+        if (request.getBalance() != null) {
+            existing.setBalance(request.getBalance().setScale(4, java.math.RoundingMode.HALF_UP));
+        }
         Account updated = accountRepository.save(existing);
         return mapToDto(updated);
     }
