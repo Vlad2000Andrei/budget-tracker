@@ -274,6 +274,47 @@ public class TransactionControllerIntegrationTest {
     }
 
     @Test
+    public void testUpdateTransaction_SameAccount_DifferentAmountAndCategory() throws Exception {
+        // Create initial transaction linked to eurAccount (EXPENSE, amount 100 EUR)
+        Transaction initial = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .amount(new BigDecimal("100.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("100.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .build());
+
+        // Set initial balance manually to match transaction existence
+        eurAccount.setBalance(new BigDecimal("900.0000"));
+        accountRepository.save(eurAccount);
+
+        UpdateTransactionRequest request = UpdateTransactionRequest.builder()
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId()) // keep eurAccount!
+                .amount(new BigDecimal("150.00")) // change to 150 EUR
+                .currency("EUR")
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .build();
+
+        mockMvc.perform(patch("/v1/transactions/" + initial.getId())
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.amount", is(150.0)))
+                .andExpect(jsonPath("$.accountId", is(eurAccount.getId().intValue())));
+
+        // Verify eurAccount balance was correctly adjusted: 900 + 100 - 150 = 850
+        Account updatedEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(new BigDecimal("850.0000"), updatedEur.getBalance());
+    }
+
+    @Test
     public void testDeleteTransaction_Success() throws Exception {
         Transaction initial = transactionRepository.save(Transaction.builder()
                 .userId(testUser.getId())

@@ -169,9 +169,9 @@ public class TransactionService {
         Transaction saved = transactionRepository.save(transaction);
 
         // Adjust Account Balance if applicable
-        if (account != null) {
+        if (request.getAccountId() != null) {
             BigDecimal accountAmount = currencyExchangeService.convert(request.getAmount(), request.getCurrency(), account.getCurrency());
-            adjustAccountBalance(account, accountAmount, request.getType());
+            adjustAccountBalance(request.getAccountId(), accountAmount, request.getType());
         }
 
         // Reconcile savings goal if applicable
@@ -266,8 +266,8 @@ public class TransactionService {
         // Adjust balances
         BigDecimal debitAmount = currencyExchangeService.convert(request.getAmount(), request.getCurrency(), fromAccount.getCurrency());
         BigDecimal creditAmount = currencyExchangeService.convert(request.getAmount(), request.getCurrency(), toAccount.getCurrency());
-        adjustAccountBalance(fromAccount, debitAmount, CategoryType.EXPENSE);
-        adjustAccountBalance(toAccount, creditAmount, CategoryType.INCOME);
+        adjustAccountBalance(request.getFromAccountId(), debitAmount, CategoryType.EXPENSE);
+        adjustAccountBalance(request.getToAccountId(), creditAmount, CategoryType.INCOME);
 
         return mapToDto(savedSource);
     }
@@ -306,11 +306,10 @@ public class TransactionService {
         }
 
         // Validate Account if specified
-        Account newAccount = null;
         if (request.getAccountId() != null) {
-            newAccount = accountRepository.findById(request.getAccountId())
+            Account validationAccount = accountRepository.findById(request.getAccountId())
                     .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + request.getAccountId()));
-            if (!newAccount.getUserId().equals(user.getId())) {
+            if (!validationAccount.getUserId().equals(user.getId())) {
                 throw new ForbiddenActionException("You do not have access to the specified account");
             }
         }
@@ -320,7 +319,7 @@ public class TransactionService {
             Account oldAccount = accountRepository.findById(existing.getAccountId()).orElse(null);
             if (oldAccount != null) {
                 BigDecimal oldAccountAmount = currencyExchangeService.convert(existing.getAmount(), existing.getCurrency(), oldAccount.getCurrency());
-                reverseAccountBalance(oldAccount, oldAccountAmount, existing.getType());
+                reverseAccountBalance(existing.getAccountId(), oldAccountAmount, existing.getType());
             }
         }
 
@@ -375,9 +374,11 @@ public class TransactionService {
         Transaction updated = transactionRepository.save(existing);
 
         // 3. Apply the new transaction impact on the new account
-        if (newAccount != null) {
-            BigDecimal newAccountAmount = currencyExchangeService.convert(request.getAmount(), request.getCurrency(), newAccount.getCurrency());
-            adjustAccountBalance(newAccount, newAccountAmount, request.getType());
+        if (request.getAccountId() != null) {
+            Account targetAccount = accountRepository.findById(request.getAccountId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + request.getAccountId()));
+            BigDecimal newAccountAmount = currencyExchangeService.convert(request.getAmount(), request.getCurrency(), targetAccount.getCurrency());
+            adjustAccountBalance(request.getAccountId(), newAccountAmount, request.getType());
         }
 
         // Reconcile savings goals if applicable
@@ -462,7 +463,7 @@ public class TransactionService {
             Account account = accountRepository.findById(tx.getAccountId()).orElse(null);
             if (account != null) {
                 BigDecimal accountAmount = currencyExchangeService.convert(tx.getAmount(), tx.getCurrency(), account.getCurrency());
-                reverseAccountBalance(account, accountAmount, tx.getType());
+                reverseAccountBalance(tx.getAccountId(), accountAmount, tx.getType());
             }
         }
         
@@ -482,7 +483,12 @@ public class TransactionService {
         }
     }
 
-    private void adjustAccountBalance(Account account, BigDecimal amount, CategoryType type) {
+    private void adjustAccountBalance(Long accountId, BigDecimal amount, CategoryType type) {
+        if (accountId == null) {
+            return;
+        }
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + accountId));
         if (type == CategoryType.INCOME) {
             account.setBalance(account.getBalance().add(amount));
         } else if (type == CategoryType.EXPENSE) {
@@ -497,7 +503,12 @@ public class TransactionService {
         accountRepository.save(account);
     }
 
-    private void reverseAccountBalance(Account account, BigDecimal amount, CategoryType type) {
+    private void reverseAccountBalance(Long accountId, BigDecimal amount, CategoryType type) {
+        if (accountId == null) {
+            return;
+        }
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + accountId));
         if (type == CategoryType.INCOME) {
             account.setBalance(account.getBalance().subtract(amount));
         } else if (type == CategoryType.EXPENSE) {
