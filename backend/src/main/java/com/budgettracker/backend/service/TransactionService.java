@@ -573,4 +573,8 @@ public class TransactionService {
                 .recurrenceRule(ruleDto)
                 .build();
     }
+
+    public boolean hasTransactionsBefore(User user, java.time.LocalDate date) {
+        return transactionRepository.hasTransactionsBefore(user.getId(), date);
+    }
 }

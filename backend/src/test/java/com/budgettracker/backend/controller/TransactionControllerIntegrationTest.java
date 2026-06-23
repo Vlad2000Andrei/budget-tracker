@@ -371,7 +371,50 @@ public class TransactionControllerIntegrationTest {
                         .param("endDate", "2026-06-10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].amount", is(10.0)));
+                .andExpect(jsonPath("$[0].amount", is(10.0)))
+                .andExpect(header().string("X-Has-Older-Transactions", "false"));
+    }
+
+    @Test
+    public void testGetTransactions_HasOlderHeader() throws Exception {
+        // Save older transaction (May)
+        transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .amount(BigDecimal.TEN)
+                .currency("EUR")
+                .convertedAmount(BigDecimal.TEN)
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 5, 20, 10, 0))
+                .build());
+
+        // Save newer transaction (June)
+        transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .amount(BigDecimal.ONE)
+                .currency("EUR")
+                .convertedAmount(BigDecimal.ONE)
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.of(2026, 6, 15, 10, 0))
+                .build());
+
+        // Query June - should have older transaction (from May)
+        mockMvc.perform(get("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .param("startDate", "2026-06-01"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(header().string("X-Has-Older-Transactions", "true"));
+
+        // Query May - should not have any older transaction
+        mockMvc.perform(get("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .param("startDate", "2026-05-01"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Has-Older-Transactions", "false"));
     }
 
     @Test

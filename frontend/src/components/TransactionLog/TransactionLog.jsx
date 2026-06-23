@@ -328,17 +328,50 @@ function AllTab({ categoriesMap, accountsMap }) {
   const searchInputRef = useRef(null);
   const [selectedTx, setSelectedTx] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
+  const [monthsToLoad, setMonthsToLoad] = useState(1);
+  const [hasOlder, setHasOlder] = useState(false);
+
+  const getStartDateForMonthsAgo = useCallback((monthsAgo) => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    const targetDate = new Date(year, month - (monthsAgo - 1), 1);
+    
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const dd = '01';
+    return `${yyyy}-${mm}-${dd}`;
+  }, []);
+
+  const getNextMonthLabel = useCallback((monthsAgo) => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    const targetDate = new Date(year, month - monthsAgo, 1);
+    const targetYear = targetDate.getFullYear();
+    const monthName = targetDate.toLocaleDateString('en-US', { month: 'long' });
+    
+    if (targetYear !== year) {
+      return `Load ${monthName} ${targetYear}`;
+    }
+    return `Load ${monthName}`;
+  }, []);
 
   const loadTransactions = useCallback(async () => {
     try {
-      const res = await axiosInstance.get('/v1/transactions');
+      const start = getStartDateForMonthsAgo(monthsToLoad);
+      const res = await axiosInstance.get(`/v1/transactions?startDate=${start}`);
       setTransactions(res.data);
+      const hasOlderHeader = res.headers['x-has-older-transactions'] === 'true';
+      setHasOlder(hasOlderHeader);
     } catch (err) {
       console.error('Failed to load transactions', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [monthsToLoad, getStartDateForMonthsAgo]);
 
   useEffect(() => {
     loadTransactions();
@@ -561,6 +594,17 @@ function AllTab({ categoriesMap, accountsMap }) {
               );
             });
           })()}
+          {hasOlder && (
+            <div className={styles.loadMoreContainer}>
+              <button
+                type="button"
+                className={styles.loadMoreBtn}
+                onClick={() => setMonthsToLoad((prev) => prev + 1)}
+              >
+                {getNextMonthLabel(monthsToLoad)}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

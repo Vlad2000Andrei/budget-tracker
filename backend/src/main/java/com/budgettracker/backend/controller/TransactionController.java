@@ -51,7 +51,14 @@ public class TransactionController {
             @RequestParam(required = false) String type,
             User user) {
         List<TransactionDto> transactions = transactionService.getTransactions(user, accountId, categoryId, startDate, endDate, type);
-        return ResponseEntity.ok(transactions);
+        boolean hasOlder = false;
+        if (startDate != null) {
+            hasOlder = transactionService.hasTransactionsBefore(user, startDate);
+        }
+        return ResponseEntity.ok()
+                .header("X-Has-Older-Transactions", String.valueOf(hasOlder))
+                .header("Access-Control-Expose-Headers", "X-Has-Older-Transactions")
+                .body(transactions);
     }
 
     @PostMapping

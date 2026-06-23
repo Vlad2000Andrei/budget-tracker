@@ -172,6 +172,15 @@ public class TransactionRepository {
                 .map(this::mapRecordToTransaction);
     }
 
+    public boolean hasTransactionsBefore(Long userId, java.time.LocalDate date) {
+        return dsl.fetchExists(
+                dsl.selectOne()
+                        .from(TRANSACTIONS)
+                        .where(TRANSACTIONS.USER_ID.eq(userId))
+                        .and(TRANSACTIONS.DATE.lt(date.atStartOfDay()))
+        );
+    }
+
     private Transaction mapRecordToTransaction(TransactionsRecord record) {
         if (record == null) {
             return null;

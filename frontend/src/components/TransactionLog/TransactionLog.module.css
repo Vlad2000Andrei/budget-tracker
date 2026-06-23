@@ -888,4 +888,30 @@
   white-space: nowrap;
 }
 
+.loadMoreContainer {
+  display: flex;
+  justify-content: center;
+  padding: 16px 8px 8px;
+  margin-top: 16px;
+}
+
+.loadMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: var(--md-shape-button);
+  border: none;
+  background: transparent;
+  color: var(--md-primary);
+  font-size: var(--md-label-large-size);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--md-duration-short) var(--md-easing-standard);
+}
+
+.loadMoreBtn:hover {
+  background: var(--md-surface-container-high);
+}
+
 
