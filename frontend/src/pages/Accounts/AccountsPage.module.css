@@ -386,7 +386,7 @@
 }
 
 .actionBtn:hover {
-  background-color: rgba(0, 0, 0, 0.08);
+  background-color: var(--md-surface-container-high);
   color: var(--md-on-surface);
 }
 
@@ -627,6 +627,31 @@
   }
   .mobileAddBtnLabel {
     display: none;
+  }
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.btnOutlined {
+  background-color: transparent;
+  color: var(--md-primary);
+  border: 1.5px solid var(--md-outline);
+}
+
+.btnOutlined:hover {
+  background-color: var(--md-surface-container-high);
+  border-color: var(--md-primary);
+}
+
+@media (max-width: 480px) {
+  .headerActions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 

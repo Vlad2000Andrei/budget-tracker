@@ -9,6 +9,7 @@ import AccountsPage from './pages/Accounts/AccountsPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import CategoriesPage from './pages/Categories/CategoriesPage';
 import StatsPage from './pages/Stats/StatsPage';
+import ImportPage from './pages/Import/ImportPage';
 
 import WelcomePage from './pages/Welcome/WelcomePage';
 
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="goals" element={<GoalsPage />} />
         <Route path="accounts" element={<AccountsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
+        <Route path="import" element={<ImportPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 

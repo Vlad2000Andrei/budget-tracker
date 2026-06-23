@@ -1,9 +1,14 @@
 package com.budgettracker.backend.service;
 
+import com.budgettracker.backend.dto.BulkTransactionRequest;
 import com.budgettracker.backend.dto.CreateRecurrenceRuleRequest;
+import com.budgettracker.backend.dto.CreateSavingsTransactionRequest;
 import com.budgettracker.backend.dto.CreateTransactionRequest;
 import com.budgettracker.backend.dto.CreateTransferRequest;
+import com.budgettracker.backend.dto.DuplicateCheckRequest;
+import com.budgettracker.backend.dto.DuplicateCheckResponse;
 import com.budgettracker.backend.dto.RecurrenceRuleDto;
+import com.budgettracker.backend.dto.SavingsTransactionDto;
 import com.budgettracker.backend.dto.TransactionDto;
 import com.budgettracker.backend.dto.UpdateTransactionRequest;
 import com.budgettracker.backend.exception.ForbiddenActionException;
@@ -13,11 +18,13 @@ import com.budgettracker.backend.jooq.enums.CategoryType;
 import com.budgettracker.backend.model.Account;
 import com.budgettracker.backend.model.Category;
 import com.budgettracker.backend.model.RecurrenceRule;
+import com.budgettracker.backend.model.SavingsGoalTransaction;
 import com.budgettracker.backend.model.Transaction;
 import com.budgettracker.backend.model.User;
 import com.budgettracker.backend.repository.AccountRepository;
 import com.budgettracker.backend.repository.CategoryRepository;
 import com.budgettracker.backend.repository.RecurrenceRuleRepository;
+import com.budgettracker.backend.repository.SavingsGoalTransactionRepository;
 import com.budgettracker.backend.repository.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,6 +34,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +48,7 @@ public class TransactionService {
     private final RecurrenceRuleRepository recurrenceRuleRepository;
     private final RecurringTransactionEngine recurringTransactionEngine;
     private final CategoryService categoryService;
+    private final SavingsGoalTransactionRepository savingsGoalTransactionRepository;
 
     @Autowired
     public TransactionService(TransactionRepository transactionRepository,
@@ -49,7 +58,8 @@ public class TransactionService {
                               SavingsGoalService savingsGoalService,
                               RecurrenceRuleRepository recurrenceRuleRepository,
                               RecurringTransactionEngine recurringTransactionEngine,
-                              CategoryService categoryService) {
+                              CategoryService categoryService,
+                              SavingsGoalTransactionRepository savingsGoalTransactionRepository) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.accountRepository = accountRepository;
@@ -58,6 +68,7 @@ public class TransactionService {
         this.recurrenceRuleRepository = recurrenceRuleRepository;
         this.recurringTransactionEngine = recurringTransactionEngine;
         this.categoryService = categoryService;
+        this.savingsGoalTransactionRepository = savingsGoalTransactionRepository;
     }
 
     public List<TransactionDto> getTransactions(User user, Long accountId, Long categoryId,
@@ -572,6 +583,138 @@ public class TransactionService {
                 .updatedAt(transaction.getUpdatedAt())
                 .recurrenceRule(ruleDto)
                 .build();
+    }
+
+    public DuplicateCheckResponse detectDuplicates(DuplicateCheckRequest request, User user) {
+        if (request.getAccountId() != null) {
+            Account account = accountRepository.findById(request.getAccountId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + request.getAccountId()));
+            if (!account.getUserId().equals(user.getId())) {
+                throw new ForbiddenActionException("You do not have access to the specified account");
+            }
+        }
+
+        List<DuplicateCheckResponse.DuplicateResult> results = request.getTransactions().stream()
+                .map(tx -> {
+                    Optional<Long> dupId = transactionRepository.findDuplicateTransactionId(
+                            user.getId(), request.getAccountId(), tx.getDate(), tx.getAmount());
+                    
+                    boolean isPotentialDuplicate = dupId.isPresent();
+                    Long existingId = dupId.orElse(null);
+                    Long categoryId = null;
+                    String importType = null;
+                    Long transferToAccountId = null;
+                    String savingsType = null;
+                    Long savingsToAccountId = null;
+
+                    if (isPotentialDuplicate && existingId != null) {
+                        Transaction dupTx = transactionRepository.findById(existingId).orElse(null);
+                        if (dupTx != null) {
+                            categoryId = dupTx.getCategoryId();
+                            if (dupTx.getLinkedTransactionId() != null) {
+                                importType = "TRANSFER";
+                                Transaction linkedTx = transactionRepository.findById(dupTx.getLinkedTransactionId()).orElse(null);
+                                if (linkedTx != null) {
+                                    if (dupTx.getAccountId().equals(request.getAccountId())) {
+                                        transferToAccountId = linkedTx.getAccountId();
+                                    } else {
+                                        transferToAccountId = dupTx.getAccountId();
+                                    }
+                                }
+                            } else if (dupTx.getType() == CategoryType.SAVINGS) {
+                                importType = "SAVINGS";
+                                Optional<SavingsGoalTransaction> sgtOpt = savingsGoalTransactionRepository.findByTransactionId(dupTx.getId());
+                                if (sgtOpt.isPresent()) {
+                                    SavingsGoalTransaction sgt = sgtOpt.get();
+                                    savingsType = sgt.getType().name();
+                                    savingsToAccountId = sgt.getToAccountId();
+                                }
+                            } else {
+                                importType = dupTx.getType() == CategoryType.INCOME ? "INCOME" : "EXPENSE";
+                            }
+                        }
+                    }
+
+                    return DuplicateCheckResponse.DuplicateResult.builder()
+                            .isPotentialDuplicate(isPotentialDuplicate)
+                            .existingTransactionId(existingId)
+                            .categoryId(categoryId)
+                            .importType(importType)
+                            .transferToAccountId(transferToAccountId)
+                            .savingsType(savingsType)
+                            .savingsToAccountId(savingsToAccountId)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return DuplicateCheckResponse.builder()
+                .results(results)
+                .build();
+    }
+
+    @Transactional
+    public List<TransactionDto> createTransactionsBulk(BulkTransactionRequest request, User user) {
+        List<TransactionDto> createdTransactions = new java.util.ArrayList<>();
+
+        for (BulkTransactionRequest.BulkTransactionItem item : request.getTransactions()) {
+            if (item.getImportType() == BulkTransactionRequest.ImportTransactionType.TRANSFER) {
+                CreateTransferRequest transferRequest = CreateTransferRequest.builder()
+                        .fromAccountId(item.getAccountId())
+                        .toAccountId(item.getTransferToAccountId())
+                        .amount(item.getAmount())
+                        .currency(item.getCurrency())
+                        .notes(item.getNotes())
+                        .date(item.getDate())
+                        .build();
+                createdTransactions.add(createTransfer(transferRequest, user));
+            } else if (item.getImportType() == BulkTransactionRequest.ImportTransactionType.SAVINGS) {
+                CreateSavingsTransactionRequest savingsRequest = CreateSavingsTransactionRequest.builder()
+                        .fromAccountId(item.getAccountId())
+                        .toAccountId(item.getSavingsToAccountId())
+                        .amount(item.getAmount())
+                        .currency(item.getCurrency())
+                        .type(item.getSavingsType())
+                        .date(item.getDate())
+                        .notes(item.getNotes())
+                        .categoryId(item.getCategoryId())
+                        .build();
+                
+                SavingsTransactionDto savingsTx = savingsGoalService.createSavingsTransaction(null, savingsRequest, user);
+                Transaction tx = transactionRepository.findById(savingsTx.getTransactionId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for savings transfer"));
+                createdTransactions.add(mapToDto(tx));
+            } else {
+                CreateTransactionRequest createReq = CreateTransactionRequest.builder()
+                        .categoryId(item.getCategoryId())
+                        .accountId(item.getAccountId())
+                        .amount(item.getAmount())
+                        .currency(item.getCurrency())
+                        .type(item.getImportType() == BulkTransactionRequest.ImportTransactionType.INCOME ? CategoryType.INCOME : CategoryType.EXPENSE)
+                        .notes(item.getNotes())
+                        .date(item.getDate())
+                        .recurrenceRule(item.getRecurrenceRule())
+                        .build();
+                
+                TransactionDto createdDto = createTransaction(createReq, user);
+                final Long transactionId = createdDto.getId();
+
+                if (item.getExistingRecurrenceRuleId() != null && item.getRecurrenceRule() == null) {
+                    RecurrenceRule rule = recurrenceRuleRepository.findById(item.getExistingRecurrenceRuleId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Recurrence rule not found with ID: " + item.getExistingRecurrenceRuleId()));
+                    
+                    Transaction transaction = transactionRepository.findById(transactionId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with ID: " + transactionId));
+                    transaction.setRecurrenceRuleId(rule.getId());
+                    transactionRepository.save(transaction);
+                    
+                    createdDto = mapToDto(transaction);
+                }
+                
+                createdTransactions.add(createdDto);
+            }
+        }
+
+        return createdTransactions;
     }
 
     public boolean hasTransactionsBefore(User user, java.time.LocalDate date) {

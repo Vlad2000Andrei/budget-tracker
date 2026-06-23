@@ -181,6 +181,26 @@ public class TransactionRepository {
         );
     }
 
+    public Optional<Long> findDuplicateTransactionId(Long userId, Long accountId, LocalDateTime date, java.math.BigDecimal amount) {
+        if (date == null || amount == null || accountId == null) {
+            return Optional.empty();
+        }
+        java.time.LocalDate localDate = date.toLocalDate();
+        LocalDateTime dayStart = localDate.atStartOfDay();
+        LocalDateTime dayEnd = localDate.plusDays(1).atStartOfDay();
+        java.math.BigDecimal absAmount = amount.abs();
+
+        return dsl.select(TRANSACTIONS.ID)
+                .from(TRANSACTIONS)
+                .where(TRANSACTIONS.USER_ID.eq(userId))
+                .and(TRANSACTIONS.ACCOUNT_ID.eq(accountId))
+                .and(TRANSACTIONS.DATE.ge(dayStart))
+                .and(TRANSACTIONS.DATE.lt(dayEnd))
+                .and(TRANSACTIONS.AMOUNT.eq(absAmount))
+                .limit(1)
+                .fetchOptionalInto(Long.class);
+    }
+
     private Transaction mapRecordToTransaction(TransactionsRecord record) {
         if (record == null) {
             return null;

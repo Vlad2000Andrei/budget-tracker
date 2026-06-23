@@ -56,7 +56,27 @@ export default function Sidebar({ onCollapse, collapsed }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const handleNavClick = (e) => {
+    if (window.hasUnsavedImportChanges) {
+      const confirmLeave = window.confirm(
+        'You have unsaved imported transactions. Are you sure you want to leave? Your changes will be lost.'
+      );
+      if (!confirmLeave) {
+        e.preventDefault();
+      } else {
+        window.hasUnsavedImportChanges = false;
+      }
+    }
+  };
+
   const handleLogout = () => {
+    if (window.hasUnsavedImportChanges) {
+      const confirmLeave = window.confirm(
+        'You have unsaved imported transactions. Are you sure you want to leave? Your changes will be lost.'
+      );
+      if (!confirmLeave) return;
+      window.hasUnsavedImportChanges = false;
+    }
     logout();
     navigate('/login', { replace: true });
   };
@@ -82,6 +102,7 @@ export default function Sidebar({ onCollapse, collapsed }) {
             <NavLink
               to={to}
               end={end}
+              onClick={handleNavClick}
               className={({ isActive }) =>
                 `${styles.navItem} ${isActive ? styles.active : ''}`
               }
@@ -102,6 +123,7 @@ export default function Sidebar({ onCollapse, collapsed }) {
         <li>
           <NavLink
             to="/settings"
+            onClick={handleNavClick}
             className={({ isActive }) =>
               `${styles.navItem} ${isActive ? styles.active : ''}`
             }

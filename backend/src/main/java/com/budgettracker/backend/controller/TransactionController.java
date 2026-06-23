@@ -1,5 +1,6 @@
 package com.budgettracker.backend.controller;
 
+import com.budgettracker.backend.dto.BulkTransactionRequest;
 import com.budgettracker.backend.dto.CreateTransactionRequest;
 import com.budgettracker.backend.dto.CreateTransferRequest;
 import com.budgettracker.backend.dto.CreateSavingsTransactionRequest;
@@ -87,6 +88,17 @@ public class TransactionController {
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(created.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    @PostMapping("/bulk")
+    public ResponseEntity<java.util.List<TransactionDto>> createTransactionsBulk(
+            @Valid @RequestBody BulkTransactionRequest request, User user) {
+        java.util.List<TransactionDto> created = transactionService.createTransactionsBulk(request, user);
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/v1/transactions")
+                .build()
                 .toUri();
         return ResponseEntity.created(location).body(created);
     }

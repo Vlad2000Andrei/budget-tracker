@@ -19,3 +19,8 @@ artifacts/
 .env
 .env.*
 !.env.example
+
+# AI agent files
+.agents/
+skills-lock.json
+

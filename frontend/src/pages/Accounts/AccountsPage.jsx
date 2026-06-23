@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosInstance from '../../api/axiosInstance';
 import styles from './AccountsPage.module.css';
@@ -17,6 +18,7 @@ function formatBalance(amount, currency) {
 
 export default function AccountsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   // State variables
   const [accounts, setAccounts] = useState([]);
@@ -164,15 +166,28 @@ export default function AccountsPage() {
           <h1>Accounts</h1>
           <p>Configure checking and savings accounts and track your current balances.</p>
         </div>
-        <button
-          className={`${styles.btn} ${styles.btnPrimary} ${styles.mobileAddBtn}`}
-          onClick={() => setIsFormOpen(true)}
-          aria-label="Add Account"
-          title="Add Account"
-        >
-          <span className={styles.mobileAddBtnIcon} aria-hidden="true">+</span>
-          <span className={styles.mobileAddBtnLabel}>Add Account</span>
-        </button>
+        <div className={styles.headerActions}>
+          <button
+            className={`${styles.btn} ${styles.btnOutlined}`}
+            onClick={() => navigate('/import')}
+            aria-label="Import Bank Extract"
+            title="Import Bank Extract"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style={{ marginRight: '6px' }} aria-hidden="true">
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13h-3V9h-4v4H7l5 5 5-5z"/>
+            </svg>
+            <span className={styles.importBtnLabel}>Import Extract</span>
+          </button>
+          <button
+            className={`${styles.btn} ${styles.btnPrimary} ${styles.mobileAddBtn}`}
+            onClick={() => setIsFormOpen(true)}
+            aria-label="Add Account"
+            title="Add Account"
+          >
+            <span className={styles.mobileAddBtnIcon} aria-hidden="true">+</span>
+            <span className={styles.mobileAddBtnLabel}>Add Account</span>
+          </button>
+        </div>
       </header>
 
       {/* Main Layout Grid */}

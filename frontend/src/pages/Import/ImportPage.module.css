@@ -1,0 +1,753 @@
+.container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--md-outline-variant);
+  padding-bottom: 20px;
+}
+
+.headerIcon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.headerText h1 {
+  font-size: var(--md-headline-medium-size);
+  font-weight: 700;
+  color: var(--md-on-surface);
+}
+
+.headerText p {
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface-variant);
+}
+
+/* Wizard Steps Indicator */
+.stepper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--md-surface-container);
+  border-radius: var(--md-shape-medium);
+  padding: 16px 32px;
+  box-shadow: var(--md-elevation-1);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepNumber {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--md-shape-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--md-label-large-size);
+  border: 2px solid var(--md-outline);
+  color: var(--md-outline);
+}
+
+.stepActive .stepNumber {
+  background-color: var(--md-primary);
+  border-color: var(--md-primary);
+  color: var(--md-on-primary);
+}
+
+.stepCompleted .stepNumber {
+  background-color: var(--md-success);
+  border-color: var(--md-success);
+  color: var(--md-on-success);
+}
+
+.stepLabel {
+  font-size: var(--md-title-small-size);
+  font-weight: 600;
+  color: var(--md-on-surface-variant);
+}
+
+.stepActive .stepLabel, .stepCompleted .stepLabel {
+  color: var(--md-on-surface);
+}
+
+.stepLine {
+  flex-grow: 1;
+  height: 2px;
+  background-color: var(--md-outline-variant);
+  margin: 0 16px;
+}
+
+.stepLineCompleted {
+  background-color: var(--md-success);
+}
+
+/* Wizard Cards */
+.card {
+  background-color: var(--md-surface-container-low);
+  border-radius: var(--md-shape-large);
+  padding: 32px;
+  box-shadow: var(--md-elevation-1);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.cardTitle {
+  font-size: var(--md-title-large-size);
+  font-weight: 700;
+  color: var(--md-on-surface);
+}
+
+/* File Upload Zone */
+.dropZone {
+  border: 2px dashed var(--md-outline);
+  border-radius: var(--md-shape-large);
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  cursor: pointer;
+  background-color: var(--md-surface-container);
+  transition: background-color var(--md-duration-short) var(--md-easing-standard), border-color var(--md-duration-short) var(--md-easing-standard);
+}
+
+.dropZone:hover {
+  background-color: var(--md-surface-container-high);
+  border-color: var(--md-primary);
+}
+
+.dropZoneActive {
+  background-color: var(--md-primary-container);
+  border-color: var(--md-primary);
+  color: var(--md-on-primary-container);
+}
+
+.uploadIcon {
+  font-size: 48px;
+}
+
+.uploadText {
+  font-size: var(--md-title-medium-size);
+  font-weight: 600;
+  color: var(--md-on-surface);
+  text-align: center;
+}
+
+.uploadSub {
+  font-size: var(--md-body-small-size);
+  color: var(--md-on-surface-variant);
+  text-align: center;
+}
+
+.fileInput {
+  display: none;
+}
+
+.selectedFileBar {
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  border-radius: var(--md-shape-medium);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fileName {
+  font-weight: 600;
+  font-size: var(--md-body-medium-size);
+}
+
+.removeFileBtn {
+  font-size: var(--md-body-large-size);
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--md-on-secondary-container);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--md-duration-short) var(--md-easing-standard);
+}
+
+.removeFileBtn:hover {
+  opacity: 0.8;
+}
+
+/* Form layouts */
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: var(--md-label-large-size);
+  font-weight: 600;
+  color: var(--md-on-surface);
+}
+
+.select, .input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--md-shape-small);
+  border: 1px solid var(--md-outline);
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  font-size: var(--md-body-medium-size);
+  outline: none;
+  transition: border-color var(--md-duration-short) var(--md-easing-standard);
+}
+
+.select:focus, .input:focus {
+  border-color: var(--md-primary);
+}
+
+/* Column Mapper UI */
+.mapperGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.mappingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background-color: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-medium);
+  gap: 16px;
+}
+
+.mappingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mappingLabel {
+  font-weight: 700;
+  font-size: var(--md-title-small-size);
+  color: var(--md-on-surface);
+}
+
+.mappingSub {
+  font-size: var(--md-body-small-size);
+  color: var(--md-on-surface-variant);
+}
+
+.mappingSelect {
+  width: 180px;
+  padding: 8px 12px;
+  border-radius: var(--md-shape-small);
+  border: 1px solid var(--md-outline);
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  outline: none;
+}
+
+/* Preview Table */
+.tableContainer {
+  overflow-x: auto;
+  border-radius: var(--md-shape-medium);
+  border: 1px solid var(--md-outline-variant);
+  background-color: var(--md-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--md-body-medium-size);
+}
+
+.table th {
+  background-color: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+  font-weight: 700;
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--md-outline-variant);
+}
+
+.table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--md-outline-variant);
+  color: var(--md-on-surface);
+}
+
+.table tr:hover {
+  background-color: var(--md-surface-container);
+}
+
+/* Review Rows styles */
+.duplicateRow {
+  background-color: rgba(230, 81, 0, 0.05);
+}
+
+.duplicateRow:hover {
+  background-color: rgba(230, 81, 0, 0.08) !important;
+}
+
+.excludedRow {
+  background-color: var(--md-surface-container);
+  pointer-events: none;
+}
+
+/* Dim all cells except the last two (warnings + actions) */
+.excludedRow td:not(:last-child):not(:nth-last-child(2)),
+.excludedRow th:not(:last-child):not(:nth-last-child(2)) {
+  opacity: 0.4;
+}
+
+/* Re-enable pointer events on warning/action cells — they must stay fully clickable */
+.excludedRow td:last-child,
+.excludedRow td:nth-last-child(2) {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+/* Mobile card excluded state: dim everything except the warning bar */
+.mobileCard.excludedRow {
+  pointer-events: none;
+  background-color: var(--md-surface-container);
+}
+
+.mobileCard.excludedRow > *:not(.mobileCardWarningBar) {
+  opacity: 0.4;
+}
+
+.mobileCard.excludedRow .mobileCardWarningBar {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: var(--md-label-small-size);
+  font-weight: 700;
+  border-radius: var(--md-shape-full);
+}
+
+.badgeWarning {
+  background-color: var(--md-warning-container);
+  color: var(--md-on-warning-container);
+}
+
+.badgeSuccess {
+  background-color: var(--md-success-container);
+  color: var(--md-on-success-container);
+}
+
+.badgeInfo {
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+}
+
+/* Dynamic field layouts in Step 3 */
+.flexRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.categorySelect {
+  padding: 6px 10px;
+  border-radius: var(--md-shape-small);
+  border: 1px solid var(--md-outline);
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  font-size: var(--md-body-small-size);
+  outline: none;
+  min-width: 140px;
+}
+
+.categoryUnassigned {
+  border-color: var(--md-error);
+  background-color: var(--md-error-container);
+  color: var(--md-on-error-container);
+}
+
+.inlineSelect {
+  padding: 6px 10px;
+  border-radius: var(--md-shape-small);
+  border: 1px solid var(--md-outline);
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  font-size: var(--md-body-small-size);
+  outline: none;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: var(--md-shape-small);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-on-surface-variant);
+  transition: background-color var(--md-duration-short) var(--md-easing-standard), color var(--md-duration-short) var(--md-easing-standard);
+}
+
+.actionBtn:hover {
+  background-color: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+}
+
+.actionBtnDanger {
+  color: var(--md-error);
+}
+
+.actionBtnDanger:hover {
+  background-color: var(--md-error-container);
+  color: var(--md-on-error-container);
+}
+
+/* Dialog Style */
+.dialogBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--md-scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.dialogCard {
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  border-radius: var(--md-shape-dialog);
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: var(--md-elevation-4);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dialogHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dialogHeader h3 {
+  font-size: var(--md-title-large-size);
+  font-weight: 700;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--md-on-surface-variant);
+  transition: color var(--md-duration-short) var(--md-easing-standard);
+}
+
+.closeBtn:hover {
+  color: var(--md-on-surface);
+}
+
+/* Wizard navigation footer buttons */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+/* Right-side group: error message + button stacked/inline */
+.footerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.footerError {
+  font-size: var(--md-body-small-size, 12px);
+  color: var(--md-error);
+  max-width: 280px;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.btn {
+  padding: 12px 24px;
+  border-radius: var(--md-shape-button);
+  font-size: var(--md-label-large-size);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color var(--md-duration-short) var(--md-easing-standard), box-shadow var(--md-duration-short) var(--md-easing-standard);
+}
+
+.btnPrimary {
+  background-color: var(--md-primary);
+  color: var(--md-on-primary);
+}
+
+.btnPrimary:hover {
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  box-shadow: var(--md-elevation-1);
+}
+
+.btnPrimary:disabled {
+  background-color: var(--md-outline-variant);
+  color: var(--md-outline);
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+
+.btnSecondary:hover {
+  background-color: var(--md-surface-variant);
+  box-shadow: var(--md-elevation-1);
+}
+
+.btnOutlined {
+  border: 1px solid var(--md-outline);
+  color: var(--md-primary);
+}
+
+.btnOutlined:hover {
+  background-color: var(--md-surface-container);
+}
+
+.alert {
+  padding: 16px;
+  border-radius: var(--md-shape-medium);
+  font-size: var(--md-body-medium-size);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.alertError {
+  background-color: var(--md-error-container);
+  color: var(--md-on-error-container);
+  border: 1px solid var(--md-error);
+}
+
+.alertSuccess {
+  background-color: var(--md-success-container);
+  color: var(--md-on-success-container);
+  border: 1px solid var(--md-success);
+}
+
+.mappingControl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 180px;
+}
+
+@media (max-width: 768px) {
+  .mapperGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .mappingRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .mappingSelect {
+    width: 100%;
+  }
+
+  .mappingControl {
+    width: 100%;
+  }
+}
+
+.mobileCardList {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .tableContainer {
+    display: none;
+  }
+  
+  .mobileCardList {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+  }
+  
+  .mobileCard {
+    background-color: var(--md-surface);
+    border: 1px solid var(--md-outline-variant);
+    border-radius: var(--md-shape-medium);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .mobileCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--md-outline-variant);
+    padding-bottom: 8px;
+  }
+  
+  .mobileCardDate {
+    font-size: var(--md-body-medium-size);
+    color: var(--md-on-surface-variant);
+    font-weight: 600;
+  }
+  
+  .mobileCardField {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .mobileFieldLabel {
+    font-size: var(--md-label-small-size);
+    color: var(--md-on-surface-variant);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .mobileCardRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .mobileCardWarningBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--md-surface-container);
+    border-radius: var(--md-shape-small);
+    padding: 8px 12px;
+    margin-top: 4px;
+  }
+  
+  .emptyCardState {
+    text-align: center;
+    padding: 24px;
+    color: var(--md-on-surface-variant);
+    font-size: var(--md-body-medium-size);
+  }
+}
+
+/* ── Success Toast ── */
+.successToast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background-color: var(--md-surface-container-high);
+  border: 1px solid var(--md-outline-variant);
+  border-left: 4px solid var(--md-success, #2e7d32);
+  border-radius: var(--md-shape-medium);
+  padding: 14px 16px;
+  box-shadow: var(--md-elevation-3);
+  min-width: 280px;
+  max-width: 380px;
+  animation: successToastIn 300ms var(--md-easing-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1));
+}
+
+@keyframes successToastIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.successToastIcon {
+  flex-shrink: 0;
+  color: var(--md-success, #2e7d32);
+  margin-top: 1px;
+}
+
+.successToastBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.successToastTitle {
+  font-size: var(--md-body-large-size, 16px);
+  font-weight: 700;
+  color: var(--md-on-surface);
+}
+
+.successToastMsg {
+  font-size: var(--md-body-medium-size, 14px);
+  color: var(--md-on-surface-variant);
+  line-height: 1.4;
+}
+
+.successToastClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--md-on-surface-variant);
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color 150ms, background-color 150ms;
+}
+
+.successToastClose:hover {
+  color: var(--md-on-surface);
+  background-color: var(--md-surface-container);
+}

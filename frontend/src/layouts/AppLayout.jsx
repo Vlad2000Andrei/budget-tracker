@@ -65,7 +65,27 @@ export default function AppLayout() {
   const [profileOpen, setProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  const handleNavClick = (e) => {
+    if (window.hasUnsavedImportChanges) {
+      const confirmLeave = window.confirm(
+        'You have unsaved imported transactions. Are you sure you want to leave? Your changes will be lost.'
+      );
+      if (!confirmLeave) {
+        e.preventDefault();
+      } else {
+        window.hasUnsavedImportChanges = false;
+      }
+    }
+  };
+
   const handleLogout = () => {
+    if (window.hasUnsavedImportChanges) {
+      const confirmLeave = window.confirm(
+        'You have unsaved imported transactions. Are you sure you want to leave? Your changes will be lost.'
+      );
+      if (!confirmLeave) return;
+      window.hasUnsavedImportChanges = false;
+    }
     logout();
     navigate('/login', { replace: true });
   };
@@ -122,6 +142,13 @@ export default function AppLayout() {
                 <button
                   className={styles.settingsBtn}
                   onClick={() => {
+                    if (window.hasUnsavedImportChanges) {
+                      const confirmLeave = window.confirm(
+                        'You have unsaved imported transactions. Are you sure you want to leave? Your changes will be lost.'
+                      );
+                      if (!confirmLeave) return;
+                      window.hasUnsavedImportChanges = false;
+                    }
                     setProfileOpen(false);
                     navigate('/settings');
                   }}
@@ -151,7 +178,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
 
-        {pathname !== '/accounts' && pathname !== '/categories' && pathname !== '/goals' && (
+        {pathname !== '/accounts' && pathname !== '/categories' && pathname !== '/goals' && pathname !== '/import' && (
           <FAB onClick={() => setModalOpen(true)} />
         )}
 
@@ -162,6 +189,7 @@ export default function AppLayout() {
               key={to}
               to={to}
               end={end}
+              onClick={handleNavClick}
               className={({ isActive }) =>
                 `${styles.mobileNavItem} ${isActive ? styles.mobileActive : ''}`
               }
