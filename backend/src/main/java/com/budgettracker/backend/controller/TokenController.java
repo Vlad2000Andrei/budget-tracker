@@ -11,6 +11,8 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +32,7 @@ public class TokenController {
     private final JwtService jwtService;
     private final CategoryService categoryService;
     private final long jwtExpirationMs;
+    private final boolean cookieSecure;
 
     @Autowired
     public TokenController(
@@ -37,12 +40,14 @@ public class TokenController {
             UserRepository userRepository,
             JwtService jwtService,
             CategoryService categoryService,
-            @Value("${app.security.jwt.expiration-ms}") long jwtExpirationMs) {
+            @Value("${app.security.jwt.expiration-ms}") long jwtExpirationMs,
+            @Value("${app.security.cookie.secure}") boolean cookieSecure) {
         this.googleTokenVerifierService = googleTokenVerifierService;
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.categoryService = categoryService;
         this.jwtExpirationMs = jwtExpirationMs;
+        this.cookieSecure = cookieSecure;
     }
 
     @PostMapping
@@ -73,7 +78,31 @@ public class TokenController {
                 .expiresAt(expiresAt)
                 .build();
 
+        ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .maxAge(jwtExpirationMs / 1000)
+                .sameSite("Strict")
+                .build();
+
         return ResponseEntity.created(URI.create("/v1/users/me"))
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        ResponseCookie cookie = ResponseCookie.from("jwt", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .build();
     }
 }

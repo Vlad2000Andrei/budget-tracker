@@ -1,12 +1,29 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import axiosInstance, { clearAuthToken, setAuthToken } from '../api/axiosInstance';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
+
+  // Initialize session on page mount
+  useEffect(() => {
+    async function initializeAuth() {
+      try {
+        const userResponse = await axiosInstance.get('/v1/users/me');
+        setUser(userResponse.data);
+        setIsAuthenticated(true);
+      } catch (err) {
+        console.log('No persistent session found:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    initializeAuth();
+  }, []);
 
   // Called by the Google GIS credential callback on the Login page.
   // Exchanges the Google ID token for our backend JWT.
@@ -16,13 +33,13 @@ export function AuthProvider({ children }) {
       const response = await axiosInstance.post('/v1/tokens', { googleIdToken });
       const { token: jwt } = response.data;
 
-      // Store JWT in module-level Axios interceptor
+      // Store JWT in module-level Axios interceptor (fallback for non-cookie calls/replays)
       setAuthToken(jwt);
-      setToken(jwt);
 
       // Fetch current user profile
       const userResponse = await axiosInstance.get('/v1/users/me');
       setUser(userResponse.data);
+      setIsAuthenticated(true);
 
       return { success: true };
     } catch (err) {
@@ -31,9 +48,16 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      // Clear cookie on server
+      await axiosInstance.post('/v1/tokens/logout');
+    } catch (err) {
+      console.error('Failed to log out from server:', err);
+    }
+
     clearAuthToken();
-    setToken(null);
+    setIsAuthenticated(false);
     setUser(null);
     setAuthError(null);
 
@@ -53,8 +77,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ token, user, authError, login, logout, refreshUser, isAuthenticated: !!token }),
-    [token, user, authError, login, logout, refreshUser]
+    () => ({ isAuthenticated, loading, user, authError, login, logout, refreshUser }),
+    [isAuthenticated, loading, user, authError, login, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

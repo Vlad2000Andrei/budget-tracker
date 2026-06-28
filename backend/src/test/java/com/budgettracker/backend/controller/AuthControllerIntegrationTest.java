@@ -176,4 +176,53 @@ public class AuthControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error", is("Validation Failed")));
     }
+
+    @Test
+    public void testTokenExchangeSetsCookie_Success() throws Exception {
+        GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
+        payload.setSubject("google-cookie-sub");
+        payload.setEmail("cookie-user@example.com");
+        payload.set("name", "Cookie User");
+
+        when(googleTokenVerifierService.verifyToken("valid-google-id-token"))
+                .thenReturn(payload);
+
+        CreateTokenRequest request = CreateTokenRequest.builder()
+                .googleIdToken("valid-google-id-token")
+                .build();
+
+        mockMvc.perform(post("/v1/tokens")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(cookie().exists("jwt"))
+                .andExpect(cookie().httpOnly("jwt", true))
+                .andExpect(cookie().secure("jwt", false));
+    }
+
+    @Test
+    public void testGetMeWithCookie_Success() throws Exception {
+        User user = userRepository.save(User.builder()
+                .email("cookie-fetch-user@example.com")
+                .googleSub("google-cookie-fetch-sub")
+                .defaultCurrency("EUR")
+                .displayName("Cookie Fetch")
+                .build());
+
+        String token = jwtService.generateToken(user);
+
+        mockMvc.perform(get("/v1/users/me")
+                        .cookie(new jakarta.servlet.http.Cookie("jwt", token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("cookie-fetch-user@example.com")))
+                .andExpect(jsonPath("$.displayName", is("Cookie Fetch")));
+    }
+
+    @Test
+    public void testLogoutClearsCookie_Success() throws Exception {
+        mockMvc.perform(post("/v1/tokens/logout"))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().exists("jwt"))
+                .andExpect(cookie().maxAge("jwt", 0));
+    }
 }

@@ -43,12 +43,20 @@ function ProtectedRouteWelcome({ children }) {
 }
 
 export default function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
     const theme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', theme);
   }, []);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--md-background)' }}>
+        <span style={{ fontSize: 'var(--md-body-large-size)', color: 'var(--md-on-background)' }}>Loading application...</span>
+      </div>
+    );
+  }
 
   return (
     <Routes>
