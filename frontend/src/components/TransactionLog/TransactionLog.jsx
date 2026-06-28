@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 import { getCategoryIcon } from '../../api/utils';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import AddTransactionModal from '../AddTransactionModal/AddTransactionModal';
 import styles from './TransactionLog.module.css';
 
@@ -732,60 +733,51 @@ function RecurringTab() {
 /* ── Root Component ────────────────────────────────────────────── */
 export default function TransactionLog() {
   const [tab, setTab] = useState('all');
-  const [categoriesMap, setCategoriesMap] = useState({});
-  const [accountsMap, setAccountsMap] = useState({});
-  const [loading, setLoading] = useState(true);
-
-  const loadLookups = useCallback(async () => {
-    try {
-      const [catsRes, accsRes] = await Promise.all([
-        axiosInstance.get('/v1/categories'),
-        axiosInstance.get('/v1/accounts'),
-      ]);
-      
-      const rawCats = {};
-      catsRes.data.forEach((c) => {
-        rawCats[c.id] = c;
-      });
-
-      const getBreadcrumb = (catId) => {
-        const path = [];
-        let curr = rawCats[catId];
-        let depth = 0;
-        while (curr && depth < 20) {
-          path.unshift(curr.name);
-          curr = curr.parentId ? rawCats[curr.parentId] : null;
-          depth++;
-        }
-        return path.join(' › ');
-      };
-
-      const cats = {};
-      catsRes.data.forEach((c) => {
-        cats[c.id] = {
-          name: c.name,
-          breadcrumb: getBreadcrumb(c.id),
-          icon: getCategoryIcon(c.icon),
-          color: c.color
-        };
-      });
-
-      const accs = {};
-      accsRes.data.forEach((a) => {
-        accs[a.id] = a.name;
-      });
-      setCategoriesMap(cats);
-      setAccountsMap(accs);
-    } catch (err) {
-      console.error('Failed to load transaction log lookups', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { categories, accounts, fetchInitialData } = useData();
 
   useEffect(() => {
-    loadLookups();
-  }, [loadLookups]);
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  const categoriesMap = useMemo(() => {
+    const rawCats = {};
+    categories.forEach((c) => {
+      rawCats[c.id] = c;
+    });
+
+    const getBreadcrumb = (catId) => {
+      const path = [];
+      let curr = rawCats[catId];
+      let depth = 0;
+      while (curr && depth < 20) {
+        path.unshift(curr.name);
+        curr = curr.parentId ? rawCats[curr.parentId] : null;
+        depth++;
+      }
+      return path.join(' › ');
+    };
+
+    const cats = {};
+    categories.forEach((c) => {
+      cats[c.id] = {
+        name: c.name,
+        breadcrumb: getBreadcrumb(c.id),
+        icon: getCategoryIcon(c.icon),
+        color: c.color
+      };
+    });
+    return cats;
+  }, [categories]);
+
+  const accountsMap = useMemo(() => {
+    const accs = {};
+    accounts.forEach((a) => {
+      accs[a.id] = a.name;
+    });
+    return accs;
+  }, [accounts]);
+
+  const loading = categories.length === 0 || accounts.length === 0;
 
   if (loading) {
     return (

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import axiosInstance from '../../api/axiosInstance';
+import { useEffect } from 'react';
+import { useData } from '../../context/DataContext';
 import { getCategoryIcon } from '../../api/utils';
 import styles from './SummaryCards.module.css';
 
@@ -25,30 +25,20 @@ function ProgressBar({ pct, variant = 'primary' }) {
 }
 
 export default function SummaryCards() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadSummary = useCallback(async () => {
-    try {
-      const res = await axiosInstance.get('/v1/dashboard-summary');
-      setData(res.data);
-    } catch (err) {
-      console.error('Failed to load dashboard summary', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { dashboardSummary, fetchDashboardSummary, loading } = useData();
 
   useEffect(() => {
-    loadSummary();
-    const handleRefresh = () => loadSummary();
+    fetchDashboardSummary();
+    const handleRefresh = () => fetchDashboardSummary(true);
     window.addEventListener('transaction-added', handleRefresh);
     return () => {
       window.removeEventListener('transaction-added', handleRefresh);
     };
-  }, [loadSummary]);
+  }, [fetchDashboardSummary]);
 
-  if (loading || !data) {
+  const isLoading = loading.dashboardSummary || !dashboardSummary;
+
+  if (isLoading) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner} aria-hidden="true" />
@@ -59,7 +49,7 @@ export default function SummaryCards() {
 
   const { totalBalance, balanceCurrency, monthIncome, monthExpenses,
           recurringIncome, oneOffIncome, recurringExpenses, oneOffExpenses,
-          budgets, savingsGoals, accounts } = data;
+          budgets, savingsGoals, accounts } = dashboardSummary;
   const netSavings = monthIncome - monthExpenses;
 
   return (

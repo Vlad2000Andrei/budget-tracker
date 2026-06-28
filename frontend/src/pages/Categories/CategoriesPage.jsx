@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useData } from '../../context/DataContext';
 import axiosInstance from '../../api/axiosInstance';
 import styles from './CategoriesPage.module.css';
 import { PRESET_ICONS, getCategoryIcon } from '../../api/utils';
@@ -19,7 +20,7 @@ const PRESET_COLORS = [
 ];
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState([]);
+  const { categories, fetchCategories: fetchCategoriesFromContext } = useData();
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [categoryTypeFilter, setCategoryTypeFilter] = useState('EXPENSE');
 
@@ -51,8 +52,7 @@ export default function CategoriesPage() {
     setLoadingCategories(true);
     setCategoryMessage(null);
     try {
-      const response = await axiosInstance.get('/v1/categories');
-      setCategories(response.data);
+      await fetchCategoriesFromContext(true);
     } catch (err) {
       setCategoryMessage({ type: 'error', text: err.message || 'Failed to load categories.' });
     } finally {

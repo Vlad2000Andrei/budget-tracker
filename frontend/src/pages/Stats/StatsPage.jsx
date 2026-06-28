@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 import { getCategoryIcon } from '../../api/utils';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -113,11 +114,17 @@ export default function StatsPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // API Data
-  const [categories, setCategories] = useState([]);
-  const [accounts, setAccounts] = useState([]);
-  const [budgets, setBudgets] = useState([]);
-  const [savingsGoals, setSavingsGoals] = useState([]);
+  // API Data from Cache Context
+  const {
+    categories,
+    budgets,
+    savingsGoals,
+    dashboardSummary,
+    fetchInitialData
+  } = useData();
+
+  const accounts = useMemo(() => dashboardSummary?.accounts || [], [dashboardSummary]);
+
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -256,25 +263,17 @@ export default function StatsPage() {
       const startStr = formatDateString(start);
       const endStr = formatDateString(end);
 
-      const [catsRes, budgetsRes, goalsRes, summaryRes, txsRes] = await Promise.all([
-        axiosInstance.get('/v1/categories'),
-        axiosInstance.get('/v1/budgets'),
-        axiosInstance.get('/v1/savings-goals'),
-        axiosInstance.get('/v1/dashboard-summary'),
-        axiosInstance.get(`/v1/transactions?startDate=${startStr}&endDate=${endStr}`),
-      ]);
+      // Verify that all global reference data is fetched
+      await fetchInitialData();
 
-      setCategories(catsRes.data);
-      setBudgets(budgetsRes.data);
-      setSavingsGoals(goalsRes.data);
-      // summaryRes provides current convertedBalances
-      setAccounts(summaryRes.data?.accounts || []);
+      // Only fetch transactions for this specific page view's date range
+      const txsRes = await axiosInstance.get(`/v1/transactions?startDate=${startStr}&endDate=${endStr}`);
       setTransactions(txsRes.data);
 
       // Initialize filter preferences if empty
       setPreferences((prev) => {
-        const accs = summaryRes.data?.accounts || [];
-        const cats = catsRes.data;
+        const accs = dashboardSummary?.accounts || [];
+        const cats = categories;
         return {
           ...prev,
           selectedAccountIds: prev.selectedAccountIds.length > 0
@@ -291,7 +290,7 @@ export default function StatsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeDates.bounding]);
+  }, [activeDates.bounding, fetchInitialData, categories, dashboardSummary]);
 
   useEffect(() => {
     loadStatsData();

@@ -201,6 +201,16 @@ public class TransactionRepository {
                 .fetchOptionalInto(Long.class);
     }
 
+    public List<Transaction> findAllByIds(java.util.Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return dsl.selectFrom(TRANSACTIONS)
+                .where(TRANSACTIONS.ID.in(ids))
+                .fetch()
+                .map(this::mapRecordToTransaction);
+    }
+
     private Transaction mapRecordToTransaction(TransactionsRecord record) {
         if (record == null) {
             return null;

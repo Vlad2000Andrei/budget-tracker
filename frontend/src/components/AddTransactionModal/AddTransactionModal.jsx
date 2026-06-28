@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { getCategoryIcon } from '../../api/utils';
 import styles from './AddTransactionModal.module.css';
 
@@ -29,8 +30,7 @@ export default function AddTransactionModal({ onClose, transaction }) {
     toAccountId: transaction?.toAccountId?.toString() || '',
   });
 
-  const [dbCategories, setDbCategories] = useState([]);
-  const [dbAccounts, setDbAccounts] = useState([]);
+  const { categories: dbCategories, accounts: dbAccounts, fetchInitialData } = useData();
   const [categorySearch, setCategorySearch] = useState('');
   const [showCategorySearchInput, setShowCategorySearchInput] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(!!transaction?.notes);
@@ -62,16 +62,11 @@ export default function AddTransactionModal({ onClose, transaction }) {
   useEffect(() => {
     async function loadData() {
       try {
-        const [catsRes, accountsRes, goalsRes] = await Promise.all([
-          axiosInstance.get('/v1/categories'),
-          axiosInstance.get('/v1/accounts'),
-          axiosInstance.get('/v1/savings-goals')
-        ]);
-        setDbCategories(catsRes.data);
-        setDbAccounts(accountsRes.data);
+        await fetchInitialData();
 
         // If editing an existing SAVINGS transaction, find its from/to accounts
         if (transaction && transaction.type === 'SAVINGS') {
+          const goalsRes = await axiosInstance.get('/v1/savings-goals');
           const goal = goalsRes.data.find(g => g.categoryId === transaction.categoryId);
           if (goal) {
             const txsRes = await axiosInstance.get(`/v1/savings-goals/${goal.id}/transactions`);
@@ -86,14 +81,12 @@ export default function AddTransactionModal({ onClose, transaction }) {
             }
           }
         }
-
-
       } catch (err) {
         console.error("Failed to load data in transaction modal", err);
       }
     }
     loadData();
-  }, [transaction]);
+  }, [transaction, fetchInitialData]);
 
   // Update default currency when user info becomes available
   useEffect(() => {

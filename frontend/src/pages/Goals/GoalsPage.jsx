@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import axiosInstance from '../../api/axiosInstance';
 import styles from './GoalsPage.module.css';
 import { getCategoryIcon } from '../../api/utils';
@@ -32,12 +33,17 @@ export default function GoalsPage() {
   // Tabs: 'BUDGETS' | 'SAVINGS'
   const [activeTab, setActiveTab] = useState('BUDGETS');
 
-  // Lists state
-  const [budgets, setBudgets] = useState([]);
-  const [savingsGoals, setSavingsGoals] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [accounts, setAccounts] = useState([]);
-  const [activeDashboardBudgets, setActiveDashboardBudgets] = useState([]);
+  // API Data from Cache Context
+  const {
+    categories,
+    budgets,
+    savingsGoals,
+    accounts,
+    dashboardSummary,
+    fetchInitialData
+  } = useData();
+
+  const activeDashboardBudgets = useMemo(() => dashboardSummary?.budgets || [], [dashboardSummary]);
 
   // UI States
   const [loading, setLoading] = useState(true);
@@ -79,22 +85,7 @@ export default function GoalsPage() {
     setLoading(true);
     setAlert(null);
     try {
-      const [catsRes, budgetsRes, savingsRes, summaryRes, accountsRes] = await Promise.all([
-        axiosInstance.get('/v1/categories'),
-        axiosInstance.get('/v1/budgets'),
-        axiosInstance.get('/v1/savings-goals'),
-        axiosInstance.get('/v1/dashboard-summary').catch(err => {
-          console.warn('Dashboard summary fetch failed, using fallback empty values', err);
-          return { data: { budgets: [] } };
-        }),
-        axiosInstance.get('/v1/accounts'),
-      ]);
-
-      setCategories(catsRes.data);
-      setBudgets(budgetsRes.data);
-      setSavingsGoals(savingsRes.data);
-      setActiveDashboardBudgets(summaryRes.data?.budgets || []);
-      setAccounts(accountsRes.data);
+      await fetchInitialData(true);
     } catch (err) {
       setAlert({
         type: 'error',
@@ -103,7 +94,7 @@ export default function GoalsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchInitialData]);
 
   useEffect(() => {
     fetchData();

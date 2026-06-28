@@ -75,6 +75,16 @@ public class RecurrenceRuleRepository {
                 .map(this::mapRecordToRecurrenceRule);
     }
 
+    public List<RecurrenceRule> findAllByIds(java.util.Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return dsl.selectFrom(RECURRENCE_RULES)
+                .where(RECURRENCE_RULES.ID.in(ids))
+                .fetch()
+                .map(this::mapRecordToRecurrenceRule);
+    }
+
     private RecurrenceRule mapRecordToRecurrenceRule(RecurrenceRulesRecord record) {
         if (record == null) {
             return null;

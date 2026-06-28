@@ -92,6 +92,26 @@ public class TransactionService {
         }
 
         List<Transaction> list = transactionRepository.findAll(user.getId(), accountId, categoryId, startDate, endDate, type);
+        
+        java.util.Set<Long> ruleIds = new java.util.HashSet<>();
+        java.util.Set<Long> linkedIds = new java.util.HashSet<>();
+        for (Transaction tx : list) {
+            if (tx.getRecurrenceRuleId() != null) {
+                ruleIds.add(tx.getRecurrenceRuleId());
+            }
+            if (tx.getLinkedTransactionId() != null) {
+                linkedIds.add(tx.getLinkedTransactionId());
+            }
+        }
+
+        java.util.Map<Long, RecurrenceRule> rulesMap = recurrenceRuleRepository.findAllByIds(ruleIds)
+                .stream()
+                .collect(Collectors.toMap(RecurrenceRule::getId, r -> r));
+
+        java.util.Map<Long, Transaction> linkedMap = transactionRepository.findAllByIds(linkedIds)
+                .stream()
+                .collect(Collectors.toMap(Transaction::getId, t -> t));
+
         java.util.List<TransactionDto> result = new java.util.ArrayList<>();
         java.util.Set<Long> processedIds = new java.util.HashSet<>();
 
@@ -103,7 +123,7 @@ public class TransactionService {
                 processedIds.add(tx.getId());
                 processedIds.add(tx.getLinkedTransactionId());
             }
-            result.add(mapToDto(tx));
+            result.add(mapToDto(tx, rulesMap, linkedMap));
         }
 
         return result;
@@ -531,28 +551,46 @@ public class TransactionService {
         if (transaction == null) {
             return null;
         }
-        RecurrenceRuleDto ruleDto = null;
+        java.util.Map<Long, RecurrenceRule> rulesMap = new java.util.HashMap<>();
         if (transaction.getRecurrenceRuleId() != null) {
-            ruleDto = recurrenceRuleRepository.findById(transaction.getRecurrenceRuleId())
-                    .map(rule -> RecurrenceRuleDto.builder()
-                            .id(rule.getId())
-                            .frequency(rule.getFrequency())
-                            .interval(rule.getInterval())
-                            .startDate(rule.getStartDate())
-                            .endDate(rule.getEndDate())
-                            .createdAt(rule.getCreatedAt())
-                            .updatedAt(rule.getUpdatedAt())
-                            .build())
-                    .orElse(null);
+            recurrenceRuleRepository.findById(transaction.getRecurrenceRuleId())
+                    .ifPresent(rule -> rulesMap.put(rule.getId(), rule));
+        }
+        java.util.Map<Long, Transaction> linkedMap = new java.util.HashMap<>();
+        if (transaction.getLinkedTransactionId() != null) {
+            transactionRepository.findById(transaction.getLinkedTransactionId())
+                    .ifPresent(lt -> linkedMap.put(lt.getId(), lt));
+        }
+        return mapToDto(transaction, rulesMap, linkedMap);
+    }
+
+    public TransactionDto mapToDto(Transaction transaction, java.util.Map<Long, RecurrenceRule> rulesMap, java.util.Map<Long, Transaction> linkedMap) {
+        if (transaction == null) {
+            return null;
+        }
+        RecurrenceRuleDto ruleDto = null;
+        if (transaction.getRecurrenceRuleId() != null && rulesMap != null) {
+            RecurrenceRule rule = rulesMap.get(transaction.getRecurrenceRuleId());
+            if (rule != null) {
+                ruleDto = RecurrenceRuleDto.builder()
+                        .id(rule.getId())
+                        .frequency(rule.getFrequency())
+                        .interval(rule.getInterval())
+                        .startDate(rule.getStartDate())
+                        .endDate(rule.getEndDate())
+                        .createdAt(rule.getCreatedAt())
+                        .updatedAt(rule.getUpdatedAt())
+                        .build();
+            }
         }
 
         String mappedType = transaction.getType() != null ? transaction.getType().name() : null;
         Long fromAccountId = null;
         Long toAccountId = null;
 
-        if (transaction.getLinkedTransactionId() != null) {
+        if (transaction.getLinkedTransactionId() != null && linkedMap != null) {
             mappedType = "MOVE";
-            Transaction linked = transactionRepository.findById(transaction.getLinkedTransactionId()).orElse(null);
+            Transaction linked = linkedMap.get(transaction.getLinkedTransactionId());
             if (linked != null) {
                 if (transaction.getType() == CategoryType.EXPENSE) {
                     fromAccountId = transaction.getAccountId();

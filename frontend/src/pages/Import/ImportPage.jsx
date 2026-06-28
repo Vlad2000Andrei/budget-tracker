@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
 import { parseImportFile } from '../../utils/importParser';
+import { useData } from '../../context/DataContext';
 import styles from './ImportPage.module.css';
 
 const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'RON', 'GBP', 'CHF', 'CAD', 'AUD', 'JPY'];
@@ -160,10 +161,14 @@ function formatLocalISO(dateObj) {
 export default function ImportPage() {
   const navigate = useNavigate();
 
-  // Load state
-  const [accounts, setAccounts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [activeRules, setActiveRules] = useState([]);
+  // API Data from Cache Context
+  const {
+    accounts,
+    categories,
+    recurrenceRules: activeRules,
+    fetchInitialData
+  } = useData();
+
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [configError, setConfigError] = useState(null);
 
@@ -202,14 +207,7 @@ export default function ImportPage() {
   useEffect(() => {
     async function loadConfig() {
       try {
-        const [accRes, catRes, ruleRes] = await Promise.all([
-          axiosInstance.get('/v1/accounts'),
-          axiosInstance.get('/v1/categories'),
-          axiosInstance.get('/v1/recurrence-rules'),
-        ]);
-        setAccounts(accRes.data);
-        setCategories(catRes.data);
-        setActiveRules(ruleRes.data);
+        await fetchInitialData();
       } catch (err) {
         setConfigError(err.message || 'Failed to load initial configuration.');
       } finally {
@@ -217,7 +215,7 @@ export default function ImportPage() {
       }
     }
     loadConfig();
-  }, []);
+  }, [fetchInitialData]);
 
   // Auto-dismiss success toast after 4 seconds
   useEffect(() => {

@@ -24,3 +24,7 @@ artifacts/
 .agents/
 skills-lock.json
 
+# Build outputs
+target/
+
+

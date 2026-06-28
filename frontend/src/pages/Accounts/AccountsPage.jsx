@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import axiosInstance from '../../api/axiosInstance';
 import styles from './AccountsPage.module.css';
 
@@ -20,8 +21,12 @@ export default function AccountsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // State variables
-  const [accounts, setAccounts] = useState([]);
+  // API Data from Cache Context
+  const {
+    accounts,
+    fetchAccounts: fetchAccountsFromContext,
+    fetchDashboardSummary
+  } = useData();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState(null);
@@ -55,14 +60,17 @@ export default function AccountsPage() {
   // Fetch accounts list
   const fetchAccounts = useCallback(async () => {
     try {
-      const response = await axiosInstance.get('/v1/accounts');
-      setAccounts(response.data);
+      await fetchAccountsFromContext(true);
+      await fetchDashboardSummary(true);
     } catch (err) {
-      setAlert({ type: 'error', text: err.message || 'Failed to fetch accounts.' });
+      setAlert({
+        type: 'error',
+        text: err.response?.data?.message || err.message || 'Failed to retrieve accounts list.',
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchAccountsFromContext, fetchDashboardSummary]);
 
   useEffect(() => {
     fetchAccounts();

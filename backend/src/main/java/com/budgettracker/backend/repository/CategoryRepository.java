@@ -98,25 +98,25 @@ public class CategoryRepository {
     }
 
     public List<Long> getDescendantCategoryIds(Long categoryId) {
-        List<Long> descendantIds = new java.util.ArrayList<>();
         if (categoryId == null) {
-            return descendantIds;
+            return new java.util.ArrayList<>();
         }
-        descendantIds.add(categoryId);
 
-        // Accumulate descendants level-by-level (BFS traversal)
-        List<Long> currentLevelIds = List.of(categoryId);
-        while (!currentLevelIds.isEmpty()) {
-            List<Long> nextLevelIds = dsl.select(CATEGORIES.ID)
-                    .from(CATEGORIES)
-                    .where(CATEGORIES.PARENT_ID.in(currentLevelIds))
-                    .fetchInto(Long.class);
-            if (!nextLevelIds.isEmpty()) {
-                descendantIds.addAll(nextLevelIds);
-            }
-            currentLevelIds = nextLevelIds;
-        }
-        return descendantIds;
+        CommonTableExpression<?> categoryTree = name("category_tree").fields("id")
+                .as(select(CATEGORIES.ID)
+                        .from(CATEGORIES)
+                        .where(CATEGORIES.ID.eq(categoryId))
+                        .unionAll(
+                                select(CATEGORIES.ID)
+                                        .from(CATEGORIES)
+                                        .join(table(name("category_tree")))
+                                        .on(CATEGORIES.PARENT_ID.eq(field(name("category_tree", "id"), Long.class)))
+                        ));
+
+        return dsl.withRecursive(categoryTree)
+                .select(categoryTree.field("id", Long.class))
+                .from(categoryTree)
+                .fetchInto(Long.class);
     }
 
     public boolean hasDescendantTransactions(Long categoryId) {
@@ -138,20 +138,24 @@ public class CategoryRepository {
         if (childId.equals(parentId)) {
             return true;
         }
-        Long currentParentId = parentId;
-        int depth = 0;
-        // Safety check: prevent infinite loops if data is already corrupt (depth limit 100)
-        while (currentParentId != null && depth < 100) {
-            if (currentParentId.equals(childId)) {
-                return true;
-            }
-            currentParentId = dsl.select(CATEGORIES.PARENT_ID)
-                    .from(CATEGORIES)
-                    .where(CATEGORIES.ID.eq(currentParentId))
-                    .fetchOneInto(Long.class);
-            depth++;
-        }
-        return false;
+
+        CommonTableExpression<?> ancestors = name("ancestors").fields("id", "parent_id")
+                .as(select(CATEGORIES.ID, CATEGORIES.PARENT_ID)
+                        .from(CATEGORIES)
+                        .where(CATEGORIES.ID.eq(parentId))
+                        .unionAll(
+                                select(CATEGORIES.ID, CATEGORIES.PARENT_ID)
+                                        .from(CATEGORIES)
+                                        .join(table(name("ancestors")))
+                                        .on(CATEGORIES.ID.eq(field(name("ancestors", "parent_id"), Long.class)))
+                        ));
+
+        List<Long> ancestorIds = dsl.withRecursive(ancestors)
+                .select(ancestors.field("id", Long.class))
+                .from(ancestors)
+                .fetchInto(Long.class);
+
+        return ancestorIds.contains(childId);
     }
 
     private Category mapRecordToCategory(CategoriesRecord record) {
