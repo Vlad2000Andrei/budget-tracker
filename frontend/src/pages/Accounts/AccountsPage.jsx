@@ -203,9 +203,25 @@ export default function AccountsPage() {
         {/* Left Column: Account cards list */}
         <main className={styles.mainContent}>
           {loading ? (
-            <div className={styles.emptyState}>
-              <div className="spinner" aria-hidden="true" />
-              <p>Loading accounts...</p>
+            <div className={styles.accountsList}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className={`${styles.accountCard} ${styles.checkingAccent}`}>
+                  <div className={styles.cardHeader}>
+                    <div className="skeleton" style={{ height: '1.25rem', width: '50%' }} />
+                    <div className="skeleton" style={{ height: '1.25rem', width: '60px', borderRadius: '12px' }} />
+                  </div>
+                  <div className={styles.balance} style={{ marginTop: '0.75rem' }}>
+                    <div className="skeleton" style={{ height: '2.25rem', width: '70%' }} />
+                  </div>
+                  <div className={styles.cardFooter} style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="skeleton" style={{ height: '1rem', width: '30px' }} />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div className="skeleton" style={{ height: '24px', width: '24px', borderRadius: '4px' }} />
+                      <div className="skeleton" style={{ height: '24px', width: '24px', borderRadius: '4px' }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : accounts.length === 0 ? (
             <div className={styles.emptyState}>

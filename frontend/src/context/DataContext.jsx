@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import { useAuth } from './AuthContext';
 
@@ -14,6 +14,20 @@ export function DataProvider({ children }) {
   const [dashboardSummary, setDashboardSummary] = useState(null);
   const [recurrenceRules, setRecurrenceRules] = useState([]);
 
+  const categoriesRef = useRef([]);
+  const accountsRef = useRef([]);
+  const budgetsRef = useRef([]);
+  const savingsGoalsRef = useRef([]);
+  const dashboardSummaryRef = useRef(null);
+  const recurrenceRulesRef = useRef([]);
+
+  useEffect(() => { categoriesRef.current = categories; }, [categories]);
+  useEffect(() => { accountsRef.current = accounts; }, [accounts]);
+  useEffect(() => { budgetsRef.current = budgets; }, [budgets]);
+  useEffect(() => { savingsGoalsRef.current = savingsGoals; }, [savingsGoals]);
+  useEffect(() => { dashboardSummaryRef.current = dashboardSummary; }, [dashboardSummary]);
+  useEffect(() => { recurrenceRulesRef.current = recurrenceRules; }, [recurrenceRules]);
+
   const [loading, setLoading] = useState({
     categories: false,
     accounts: false,
@@ -24,7 +38,7 @@ export function DataProvider({ children }) {
   });
 
   const fetchCategories = useCallback(async (force = false) => {
-    if (!force && categories.length > 0) return;
+    if (!force && categoriesRef.current.length > 0) return;
     setLoading(prev => ({ ...prev, categories: true }));
     try {
       const res = await axiosInstance.get('/v1/categories');
@@ -34,10 +48,10 @@ export function DataProvider({ children }) {
     } finally {
       setLoading(prev => ({ ...prev, categories: false }));
     }
-  }, [categories.length]);
+  }, []);
 
   const fetchAccounts = useCallback(async (force = false) => {
-    if (!force && accounts.length > 0) return;
+    if (!force && accountsRef.current.length > 0) return;
     setLoading(prev => ({ ...prev, accounts: true }));
     try {
       const res = await axiosInstance.get('/v1/accounts');
@@ -47,10 +61,10 @@ export function DataProvider({ children }) {
     } finally {
       setLoading(prev => ({ ...prev, accounts: false }));
     }
-  }, [accounts.length]);
+  }, []);
 
   const fetchBudgets = useCallback(async (force = false) => {
-    if (!force && budgets.length > 0) return;
+    if (!force && budgetsRef.current.length > 0) return;
     setLoading(prev => ({ ...prev, budgets: true }));
     try {
       const res = await axiosInstance.get('/v1/budgets');
@@ -60,10 +74,10 @@ export function DataProvider({ children }) {
     } finally {
       setLoading(prev => ({ ...prev, budgets: false }));
     }
-  }, [budgets.length]);
+  }, []);
 
   const fetchSavingsGoals = useCallback(async (force = false) => {
-    if (!force && savingsGoals.length > 0) return;
+    if (!force && savingsGoalsRef.current.length > 0) return;
     setLoading(prev => ({ ...prev, savingsGoals: true }));
     try {
       const res = await axiosInstance.get('/v1/savings-goals');
@@ -73,10 +87,10 @@ export function DataProvider({ children }) {
     } finally {
       setLoading(prev => ({ ...prev, savingsGoals: false }));
     }
-  }, [savingsGoals.length]);
+  }, []);
 
   const fetchDashboardSummary = useCallback(async (force = false) => {
-    if (!force && dashboardSummary !== null) return;
+    if (!force && dashboardSummaryRef.current !== null) return;
     setLoading(prev => ({ ...prev, dashboardSummary: true }));
     try {
       const res = await axiosInstance.get('/v1/dashboard-summary');
@@ -89,10 +103,10 @@ export function DataProvider({ children }) {
     } finally {
       setLoading(prev => ({ ...prev, dashboardSummary: false }));
     }
-  }, [dashboardSummary]);
+  }, []);
 
   const fetchRecurrenceRules = useCallback(async (force = false) => {
-    if (!force && recurrenceRules.length > 0) return;
+    if (!force && recurrenceRulesRef.current.length > 0) return;
     setLoading(prev => ({ ...prev, recurrenceRules: true }));
     try {
       const res = await axiosInstance.get('/v1/recurrence-rules');
@@ -102,7 +116,7 @@ export function DataProvider({ children }) {
     } finally {
       setLoading(prev => ({ ...prev, recurrenceRules: false }));
     }
-  }, [recurrenceRules.length]);
+  }, []);
 
   const fetchInitialData = useCallback(async (force = false) => {
     await Promise.all([

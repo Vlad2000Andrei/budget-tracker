@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
 import axiosInstance from '../../api/axiosInstance';
 import styles from './CategoriesPage.module.css';
@@ -35,20 +35,7 @@ export default function CategoriesPage() {
   const [categoryMessage, setCategoryMessage] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  // Load categories on mount
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  // Auto-clear success messages after a few seconds
-  useEffect(() => {
-    if (categoryMessage?.type === 'success') {
-      const t = setTimeout(() => setCategoryMessage(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [categoryMessage]);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     setLoadingCategories(true);
     setCategoryMessage(null);
     try {
@@ -58,7 +45,20 @@ export default function CategoriesPage() {
     } finally {
       setLoadingCategories(false);
     }
-  };
+  }, [fetchCategoriesFromContext]);
+
+  // Load categories on mount
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  // Auto-clear success messages after a few seconds
+  useEffect(() => {
+    if (categoryMessage?.type === 'success') {
+      const t = setTimeout(() => setCategoryMessage(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [categoryMessage]);
 
   const handleSaveCategory = async (e) => {
     e.preventDefault();
@@ -221,9 +221,29 @@ export default function CategoriesPage() {
           )}
 
           {loadingCategories ? (
-            <div className={styles.loadingState}>
-              <div className="spinner" aria-hidden="true" />
-              <span>Loading categories...</span>
+            <div className={styles.categoryTreeList}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className={styles.categoryGroupCard} style={{ opacity: 0.7 }}>
+                  <div className={styles.parentRow}>
+                    <div className={styles.categoryMainInfo} style={{ width: '100%', display: 'flex', alignItems: 'center' }}>
+                      <div className="skeleton skeleton-circle" style={{ width: '12px', height: '12px', marginRight: '8px' }} />
+                      <div className="skeleton skeleton-circle" style={{ width: '20px', height: '20px', marginRight: '8px' }} />
+                      <div className="skeleton" style={{ height: '1.25rem', width: '30%' }} />
+                    </div>
+                  </div>
+                  <div className={styles.childrenList}>
+                    {[1, 2].map((j) => (
+                      <div key={j} className={styles.childRow}>
+                        <div className={styles.categoryMainInfo} style={{ width: '100%', display: 'flex', alignItems: 'center' }}>
+                          <div className="skeleton skeleton-circle" style={{ width: '10px', height: '10px', marginRight: '8px' }} />
+                          <div className="skeleton skeleton-circle" style={{ width: '18px', height: '18px', marginRight: '8px' }} />
+                          <div className="skeleton" style={{ height: '1.1rem', width: '20%' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : categoryTree.length === 0 ? (
             <div className={styles.emptyState}>

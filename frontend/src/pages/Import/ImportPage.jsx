@@ -485,7 +485,6 @@ export default function ImportPage() {
 
   // Rows that are active (not excluded) but incomplete
   const activeRows = importRows.filter(r => !r.excluded);
-  const excludedCount = importRows.length - activeRows.length;
   const readyRows = activeRows.filter(isRowComplete);
 
   const executeImport = async (rowsToImport) => {
@@ -570,10 +569,37 @@ export default function ImportPage() {
   if (loadingConfig) {
     return (
       <div className={styles.container}>
-        <div className={styles.loadingState}>
-          <div className="spinner" />
-          <span>Loading import configuration...</span>
+        {/* Header */}
+        <div className={styles.header}>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="40" height="40" className={styles.headerIcon} style={{ color: 'var(--md-primary)', flexShrink: 0 }} aria-hidden="true">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13h-3V9h-4v4H7l5 5 5-5z"/>
+          </svg>
+          <div className={styles.headerText}>
+            <h1>Import Bank Extract</h1>
+            <p>Parse extracts from CSV, JSON, or Excel files, map column headers, and import transactions.</p>
+          </div>
         </div>
+
+        {/* Stepper Indicator */}
+        <div className={styles.stepper}>
+          <div className={`${styles.step} ${styles.stepActive}`}>
+            <span className={styles.stepNumber}>1</span>
+            <span className={styles.stepLabel}>Upload File</span>
+          </div>
+          <div className={styles.stepLine} />
+          <div className={styles.step}>
+            <span className={styles.stepNumber}>2</span>
+            <span className={styles.stepLabel}>Map Headers</span>
+          </div>
+          <div className={styles.stepLine} />
+          <div className={styles.step}>
+            <span className={styles.stepNumber}>3</span>
+            <span className={styles.stepLabel}>Review & Verify</span>
+          </div>
+        </div>
+
+        {/* Dynamic Card skeleton */}
+        <div className="skeleton" style={{ height: '250px', width: '100%', borderRadius: '12px', marginTop: '2rem' }} />
       </div>
     );
   }

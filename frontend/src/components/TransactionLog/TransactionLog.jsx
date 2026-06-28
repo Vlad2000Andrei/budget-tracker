@@ -782,9 +782,41 @@ export default function TransactionLog() {
   if (loading) {
     return (
       <div className={styles.container}>
-        <div className={styles.loadingContainer}>
-          <div className={styles.spinner} aria-hidden="true" />
-          <span>Loading transactions…</span>
+        <div className={styles.header}>
+          <h2 className={styles.title}>Transactions</h2>
+          <div className={styles.tabs} role="tablist">
+            <button
+              className={`${styles.tab} ${styles.tabActive}`}
+              role="tab"
+              aria-selected="true"
+              disabled
+            >
+              All
+            </button>
+            <button
+              className={styles.tab}
+              role="tab"
+              aria-selected="false"
+              disabled
+            >
+              Recurring
+            </button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 0', borderBottom: '1px solid var(--md-outline-variant)' }}>
+              <div className="skeleton skeleton-circle" style={{ width: '40px', height: '40px' }} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="skeleton" style={{ height: '1.25rem', width: '30%' }} />
+                <div className="skeleton" style={{ height: '0.875rem', width: '20%' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                <div className="skeleton" style={{ height: '1.25rem', width: '80px' }} />
+                <div className="skeleton" style={{ height: '0.875rem', width: '60px' }} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

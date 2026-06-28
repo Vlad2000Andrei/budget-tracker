@@ -753,9 +753,93 @@ export default function StatsPage() {
 
   if (loading && categories.length === 0) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.spinner} aria-hidden="true" />
-        <span>Loading stats & overviews...</span>
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <div className={styles.headerTitleArea}>
+            <span className={styles.headerIcon} role="img" aria-label="Insights">📊</span>
+            <div className={styles.headerText}>
+              <h1>Stats & Overviews</h1>
+              <p>Analyze spending trends, view net cash flow, and manage exclusions.</p>
+            </div>
+          </div>
+          <div className={styles.headerControls}>
+            <select
+              value={periodType}
+              onChange={(e) => setPeriodType(e.target.value)}
+              className={styles.periodSelect}
+              aria-label="Select date range preset"
+              disabled
+            >
+              <option value="last30">Last 30 Days</option>
+            </select>
+          </div>
+        </header>
+
+        <div className={styles.layoutGrid}>
+          <aside className={styles.sidebar}>
+            <div className={styles.sidebarHeader}>
+              <h3>Filters & Exclusions</h3>
+            </div>
+            <div className={styles.sidebarContent}>
+              <div className={styles.filterGroup}>
+                <h4>Accounts</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                  <div className="skeleton" style={{ height: '1.25rem', width: '80%' }} />
+                  <div className="skeleton" style={{ height: '1.25rem', width: '60%' }} />
+                </div>
+              </div>
+              <div className={styles.filterGroup}>
+                <h4>Categories</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                  <div className="skeleton" style={{ height: '1.25rem', width: '70%' }} />
+                  <div className="skeleton" style={{ height: '1.25rem', width: '85%' }} />
+                  <div className="skeleton" style={{ height: '1.25rem', width: '50%' }} />
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <main className={styles.mainContent}>
+            {/* Category Cashflow breakdown skeleton */}
+            <section className={styles.cashflowBreakdownCard}>
+              <div className={styles.cashflowCardHeader}>
+                <h3>Categories</h3>
+                <span className={styles.helpBadge}>Current period aggregates</span>
+              </div>
+              <div className={styles.cashflowGrid}>
+                <div className={styles.cashflowTypeSection}>
+                  <h4 className={styles.expenseTypeTitle}>Expenses</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '1rem' }}>
+                    <div className="skeleton" style={{ height: '2.5rem', width: '100%' }} />
+                    <div className="skeleton" style={{ height: '2.5rem', width: '100%' }} />
+                  </div>
+                </div>
+                <div className={styles.cashflowRightColumn}>
+                  <div className={styles.cashflowTypeSection}>
+                    <h4 className={styles.incomeTypeTitle}>Income</h4>
+                    <div className="skeleton" style={{ height: '2.5rem', width: '100%', marginTop: '1rem' }} />
+                  </div>
+                  <div className={styles.cashflowTypeSection} style={{ marginTop: '1.5rem' }}>
+                    <h4 className={styles.savingsTypeTitle}>Savings</h4>
+                    <div className="skeleton" style={{ height: '2.5rem', width: '100%', marginTop: '1rem' }} />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* KPI row skeleton */}
+            <section className={styles.kpiRow}>
+              <div className={styles.kpiCard}>
+                <span className={styles.kpiLabel}>Net cash flow</span>
+                <div className="skeleton" style={{ height: '2.25rem', width: '120px', marginTop: '0.5rem' }} />
+              </div>
+              <div className={styles.kpiCard}>
+                <span className={styles.kpiLabel}>Savings rate</span>
+                <div className="skeleton" style={{ height: '2.25rem', width: '80px', marginTop: '0.5rem' }} />
+              </div>
+            </section>
+          </main>
+        </div>
       </div>
     );
   }

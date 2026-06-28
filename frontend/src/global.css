@@ -314,3 +314,59 @@ html[data-theme='dark'] {
   background: var(--md-primary-container);
   color: var(--md-on-primary-container);
 }
+
+/* ── Skeleton Loading Shimmer ────────────────────────────── */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--md-surface-container-high) 25%,
+    var(--md-surface-container-highest) 37%,
+    var(--md-surface-container-high) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: var(--md-shape-small);
+  display: inline-block;
+  vertical-align: middle;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
+}
+
+.skeleton-text {
+  height: 1em;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-title {
+  height: 1.75rem;
+  width: 60%;
+  margin-bottom: 1rem;
+}
+
+.skeleton-circle {
+  border-radius: var(--md-shape-full);
+}
+
+.skeleton-button {
+  height: 2.5rem;
+  width: 6rem;
+  border-radius: var(--md-shape-button);
+}
+
+.skeleton-card {
+  height: 120px;
+  width: 100%;
+  border-radius: var(--md-shape-card);
+}
+

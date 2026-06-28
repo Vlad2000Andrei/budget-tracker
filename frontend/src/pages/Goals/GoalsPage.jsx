@@ -440,9 +440,42 @@ export default function GoalsPage() {
 
           {/* List display */}
           {loading ? (
-            <div className={styles.emptyState}>
-              <div className="spinner" aria-hidden="true" />
-              <p>Loading goals...</p>
+            <div className={styles.goalsList}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className={`${styles.goalCard} ${styles.budgetAccent}`}>
+                  <div className={styles.cardHeader}>
+                    <div className={styles.categoryInfo} style={{ width: '70%', display: 'flex', alignItems: 'center' }}>
+                      <div className="skeleton skeleton-circle" style={{ width: '10px', height: '10px', marginRight: '8px' }} />
+                      <div className="skeleton skeleton-circle" style={{ width: '20px', height: '20px', marginRight: '8px' }} />
+                      <div className="skeleton" style={{ height: '1.25rem', width: '50%' }} />
+                    </div>
+                    <div className="skeleton" style={{ height: '1.25rem', width: '50px', borderRadius: '12px' }} />
+                  </div>
+
+                  <div className={styles.amounts} style={{ marginTop: '1rem' }}>
+                    <div style={{ width: '60%' }}>
+                      <div className="skeleton" style={{ height: '1.5rem', width: '100%' }} />
+                    </div>
+                    <div className="skeleton" style={{ height: '1rem', width: '80px' }} />
+                  </div>
+
+                  <div className={styles.progressContainer} style={{ marginTop: '1rem' }}>
+                    <div className={styles.progressLabelRow}>
+                      <div className="skeleton" style={{ height: '1rem', width: '60px' }} />
+                      <div className="skeleton" style={{ height: '1rem', width: '30px' }} />
+                    </div>
+                    <div className="skeleton" style={{ height: '8px', width: '100%', borderRadius: '4px', marginTop: '4px' }} />
+                  </div>
+
+                  <div className={styles.goalDates} style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="skeleton" style={{ height: '1rem', width: '120px' }} />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div className="skeleton" style={{ height: '24px', width: '24px', borderRadius: '4px' }} />
+                      <div className="skeleton" style={{ height: '24px', width: '24px', borderRadius: '4px' }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : activeTab === 'BUDGETS' ? (
             /* Spending Budgets rendering */

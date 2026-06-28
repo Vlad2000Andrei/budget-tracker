@@ -40,9 +40,49 @@ export default function SummaryCards() {
 
   if (isLoading) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.spinner} aria-hidden="true" />
-        <span>Loading financial overview…</span>
+      <div className={styles.grid}>
+        {/* Skeleton Balance Card */}
+        <div className={`${styles.card} ${styles.balanceCard}`}>
+          <span className={styles.cardLabel}>Total Balance</span>
+          <div className="skeleton" style={{ height: '2.5rem', width: '70%', margin: '0.5rem 0' }} />
+          <span className={styles.cardSub}>Across all accounts</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '1.5rem' }}>
+            <div className="skeleton" style={{ height: '1.75rem', width: '100%' }} />
+            <div className="skeleton" style={{ height: '1.75rem', width: '100%' }} />
+          </div>
+        </div>
+        {/* Skeleton Cash Flow Card */}
+        <div className={`${styles.card} ${styles.cashFlowCard}`}>
+          <span className={styles.cardLabel}>This Month</span>
+          <div style={{ display: 'flex', gap: '1.5rem', height: '6.5rem', marginTop: '0.5rem' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span className={styles.cashLabel}>Income</span>
+              <div className="skeleton" style={{ height: '1.5rem', width: '100%' }} />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span className={styles.cashLabel}>Expenses</span>
+              <div className="skeleton" style={{ height: '1.5rem', width: '100%' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
+            <span className={styles.netLabel}>Net savings</span>
+            <div className="skeleton" style={{ height: '1.5rem', width: '100px' }} />
+          </div>
+        </div>
+        {/* Skeleton Goals Card */}
+        <div className={`${styles.card} ${styles.goalsCard}`}>
+          <span className={styles.cardLabel}>Goals at a Glance</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+            <div>
+              <span className={styles.goalSectionTitle}>Budgets</span>
+              <div className="skeleton" style={{ height: '1.5rem', width: '100%', marginTop: '4px' }} />
+            </div>
+            <div>
+              <span className={styles.goalSectionTitle}>Savings Goals</span>
+              <div className="skeleton" style={{ height: '1.5rem', width: '100%', marginTop: '4px' }} />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
