@@ -542,4 +542,194 @@ public class SavingsGoalControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].toAccountName", is("Savings")))
                 .andExpect(jsonPath("$[0].notes", is("Test deposit")));
     }
+
+    @Test
+    public void testUpdateSavingsGoal_Success() throws Exception {
+        String goalJson = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CreateSavingsGoalRequest.builder()
+                                .categoryId(parentSavingsCategory.getId())
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .targetDate(LocalDate.now().plusMonths(6))
+                                .build())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long goalId = objectMapper.readValue(goalJson, SavingsGoalDto.class).getId();
+
+        mockMvc.perform(patch("/v1/savings-goals/" + goalId)
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(UpdateSavingsGoalRequest.builder()
+                                .categoryId(childSavingsCategory.getId())
+                                .goalType(SavingsGoalType.MONTHLY)
+                                .targetAmount(new BigDecimal("1500.00"))
+                                .targetDate(LocalDate.now().plusMonths(12))
+                                .build())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categoryId", is(childSavingsCategory.getId().intValue())))
+                .andExpect(jsonPath("$.goalType", is("MONTHLY")))
+                .andExpect(jsonPath("$.targetAmount", is(1500.00)))
+                .andExpect(jsonPath("$.targetDate", is(LocalDate.now().plusMonths(12).toString())));
+    }
+
+    @Test
+    public void testUpdateSavingsGoal_Forbidden() throws Exception {
+        String goalJson = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CreateSavingsGoalRequest.builder()
+                                .categoryId(parentSavingsCategory.getId())
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .build())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long goalId = objectMapper.readValue(goalJson, SavingsGoalDto.class).getId();
+
+        mockMvc.perform(patch("/v1/savings-goals/" + goalId)
+                        .header("X-User-Id", otherUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(UpdateSavingsGoalRequest.builder()
+                                .categoryId(parentSavingsCategory.getId())
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1500.00"))
+                                .build())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testDeleteSavingsGoal_Success() throws Exception {
+        String goalJson = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CreateSavingsGoalRequest.builder()
+                                .categoryId(parentSavingsCategory.getId())
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .build())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long goalId = objectMapper.readValue(goalJson, SavingsGoalDto.class).getId();
+
+        mockMvc.perform(delete("/v1/savings-goals/" + goalId)
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    public void testDeleteSavingsGoal_Forbidden() throws Exception {
+        String goalJson = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CreateSavingsGoalRequest.builder()
+                                .categoryId(parentSavingsCategory.getId())
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .build())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long goalId = objectMapper.readValue(goalJson, SavingsGoalDto.class).getId();
+
+        mockMvc.perform(delete("/v1/savings-goals/" + goalId)
+                        .header("X-User-Id", otherUser.getId()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testUpdateSavingsGoal_MonthlyType() throws Exception {
+        String goalJson = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CreateSavingsGoalRequest.builder()
+                                .categoryId(parentSavingsCategory.getId())
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .build())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long goalId = objectMapper.readValue(goalJson, SavingsGoalDto.class).getId();
+
+        mockMvc.perform(patch("/v1/savings-goals/" + goalId)
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(UpdateSavingsGoalRequest.builder()
+                                .categoryId(parentSavingsCategory.getId())
+                                .goalType(SavingsGoalType.MONTHLY)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .targetDate(LocalDate.now().plusMonths(3))
+                                .build())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.goalType", is("MONTHLY")));
+    }
+
+    @Test
+    public void testUpdateSavingsGoal_CategoryNotFound() throws Exception {
+        String goalJson = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CreateSavingsGoalRequest.builder()
+                                .categoryId(parentSavingsCategory.getId())
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .build())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long goalId = objectMapper.readValue(goalJson, SavingsGoalDto.class).getId();
+
+        mockMvc.perform(patch("/v1/savings-goals/" + goalId)
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(UpdateSavingsGoalRequest.builder()
+                                .categoryId(99999L) // Non-existent category ID
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .build())))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void testUpdateSavingsGoal_NonSavingsCategory() throws Exception {
+        String goalJson = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CreateSavingsGoalRequest.builder()
+                                .categoryId(parentSavingsCategory.getId())
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .build())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long goalId = objectMapper.readValue(goalJson, SavingsGoalDto.class).getId();
+
+        mockMvc.perform(patch("/v1/savings-goals/" + goalId)
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(UpdateSavingsGoalRequest.builder()
+                                .categoryId(expenseCategory.getId()) // EXPENSE type category
+                                .goalType(SavingsGoalType.ONE_OFF)
+                                .targetAmount(new BigDecimal("1000.00"))
+                                .build())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testDeleteSavingsGoal_GoalNotFound() throws Exception {
+        mockMvc.perform(delete("/v1/savings-goals/99999")
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isNotFound());
+    }
 }

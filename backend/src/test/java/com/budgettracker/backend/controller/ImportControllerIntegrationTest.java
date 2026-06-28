@@ -246,4 +246,111 @@ public class ImportControllerIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(0, new BigDecimal("700.0000").compareTo(updatedChecking2.getBalance()));
         org.junit.jupiter.api.Assertions.assertEquals(0, new BigDecimal("600.0000").compareTo(updatedSavings.getBalance()));
     }
+
+    @Test
+    public void testDetectDuplicates_SpecialTypes() throws Exception {
+        LocalDateTime date = LocalDateTime.of(2026, 6, 23, 12, 0, 0);
+
+        // 1. Pre-insert a transfer transaction pair
+        var txSrc = transactionRepository.save(com.budgettracker.backend.model.Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(groceryCategory.getId())
+                .accountId(checkingAccount.getId())
+                .amount(new BigDecimal("100.00"))
+                .currency("USD")
+                .convertedAmount(new BigDecimal("100.00"))
+                .convertedCurrency("USD")
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(date)
+                .build());
+
+        var txDest = transactionRepository.save(com.budgettracker.backend.model.Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(groceryCategory.getId())
+                .accountId(savingsAccount.getId())
+                .amount(new BigDecimal("100.00"))
+                .currency("USD")
+                .convertedAmount(new BigDecimal("100.00"))
+                .convertedCurrency("USD")
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.INCOME)
+                .date(date)
+                .linkedTransactionId(txSrc.getId())
+                .build());
+
+        // Update txSrc to point to txDest
+        dsl.update(TRANSACTIONS)
+                .set(TRANSACTIONS.LINKED_TRANSACTION_ID, txDest.getId())
+                .where(TRANSACTIONS.ID.eq(txSrc.getId()))
+                .execute();
+
+        // 2. Pre-insert a savings goal and savings goal transaction
+        com.budgettracker.backend.model.SavingsGoal goal = com.budgettracker.backend.model.SavingsGoal.builder()
+                .userId(testUser.getId())
+                .categoryId(savingsCategory.getId())
+                .goalType(com.budgettracker.backend.jooq.enums.SavingsGoalType.ONE_OFF)
+                .targetAmount(new BigDecimal("2000.00"))
+                .currentAmount(BigDecimal.ZERO)
+                .build();
+
+        Long goalId = dsl.insertInto(SAVINGS_GOALS)
+                .set(SAVINGS_GOALS.USER_ID, goal.getUserId())
+                .set(SAVINGS_GOALS.CATEGORY_ID, goal.getCategoryId())
+                .set(SAVINGS_GOALS.GOAL_TYPE, goal.getGoalType())
+                .set(SAVINGS_GOALS.TARGET_AMOUNT, goal.getTargetAmount())
+                .set(SAVINGS_GOALS.CURRENT_AMOUNT, goal.getCurrentAmount())
+                .returning(SAVINGS_GOALS.ID)
+                .fetchOne()
+                .getId();
+
+        var txSavings = transactionRepository.save(com.budgettracker.backend.model.Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(savingsCategory.getId())
+                .accountId(checkingAccount.getId())
+                .amount(new BigDecimal("50.00"))
+                .currency("USD")
+                .convertedAmount(new BigDecimal("50.00"))
+                .convertedCurrency("USD")
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.SAVINGS)
+                .date(date)
+                .build());
+
+        dsl.insertInto(SAVINGS_TRANSACTIONS)
+                .set(SAVINGS_TRANSACTIONS.TRANSACTION_ID, txSavings.getId())
+                .set(SAVINGS_TRANSACTIONS.FROM_ACCOUNT_ID, checkingAccount.getId())
+                .set(SAVINGS_TRANSACTIONS.TO_ACCOUNT_ID, savingsAccount.getId())
+                .set(SAVINGS_TRANSACTIONS.TYPE, com.budgettracker.backend.jooq.enums.SavingsTransactionType.DEPOSIT)
+                .set(SAVINGS_TRANSACTIONS.CREATED_AT, date)
+                .execute();
+
+        // 3. Detect duplicate for transfer (matches txSrc)
+        DuplicateCheckRequest.CandidateTransaction candTransfer = DuplicateCheckRequest.CandidateTransaction.builder()
+                .date(LocalDateTime.of(2026, 6, 23, 0, 0, 0))
+                .amount(new BigDecimal("-100.00"))
+                .build();
+
+        // 4. Detect duplicate for savings (matches txSavings)
+        DuplicateCheckRequest.CandidateTransaction candSavings = DuplicateCheckRequest.CandidateTransaction.builder()
+                .date(LocalDateTime.of(2026, 6, 23, 0, 0, 0))
+                .amount(new BigDecimal("-50.00"))
+                .build();
+
+        DuplicateCheckRequest request = DuplicateCheckRequest.builder()
+                .accountId(checkingAccount.getId())
+                .transactions(List.of(candTransfer, candSavings))
+                .build();
+
+        mockMvc.perform(post("/v1/imports/detect-duplicates")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.results", hasSize(2)))
+                .andExpect(jsonPath("$.results[0].potentialDuplicate", is(true)))
+                .andExpect(jsonPath("$.results[0].importType", is("TRANSFER")))
+                .andExpect(jsonPath("$.results[1].potentialDuplicate", is(true)))
+                .andExpect(jsonPath("$.results[1].importType", is("SAVINGS")));
+    }
 }

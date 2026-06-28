@@ -28,6 +28,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -961,6 +962,180 @@ public class TransactionControllerIntegrationTest {
                 .andExpect(jsonPath("$.id", notNullValue()))
                 .andExpect(jsonPath("$.savingsGoalId", is(goal.getId().intValue())))
                 .andExpect(jsonPath("$.amount", is(50.0)));
+    }
+
+    @Test
+    public void testUpdateTransaction_AddRecurrenceRule() throws Exception {
+        var request = CreateTransactionRequest.builder()
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .notes("Single Tx")
+                .build();
+
+        String res = mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long txId = objectMapper.readValue(res, com.budgettracker.backend.dto.TransactionDto.class).getId();
+
+        var updateRequest = UpdateTransactionRequest.builder()
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .notes("Single Tx updated to recurring")
+                .recurrenceRule(com.budgettracker.backend.dto.CreateRecurrenceRuleRequest.builder()
+                        .frequency(RecurrenceFrequency.WEEKLY)
+                        .interval(1)
+                        .startDate(LocalDate.now())
+                        .build())
+                .build();
+
+        mockMvc.perform(patch("/v1/transactions/" + txId)
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recurrenceRuleId", notNullValue()));
+    }
+
+    @Test
+    public void testUpdateTransaction_ChangeCategoryToSavings() throws Exception {
+        savingsGoalRepository.save(com.budgettracker.backend.model.SavingsGoal.builder()
+                .userId(testUser.getId())
+                .categoryId(savingsCategory.getId())
+                .goalType(SavingsGoalType.ONE_OFF)
+                .targetAmount(new BigDecimal("1000.00"))
+                .currentAmount(BigDecimal.ZERO)
+                .build());
+
+        var request = CreateTransactionRequest.builder()
+                .amount(new BigDecimal("50.00"))
+                .currency("EUR")
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .build();
+
+        String res = mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long txId = objectMapper.readValue(res, com.budgettracker.backend.dto.TransactionDto.class).getId();
+
+        var updateRequest = UpdateTransactionRequest.builder()
+                .amount(new BigDecimal("50.00"))
+                .currency("EUR")
+                .categoryId(savingsCategory.getId())
+                .accountId(eurAccount.getId())
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .build();
+
+        mockMvc.perform(patch("/v1/transactions/" + txId)
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void testDeleteTransaction_AllModes() throws Exception {
+        var request = CreateTransactionRequest.builder()
+                .amount(new BigDecimal("30.00"))
+                .currency("EUR")
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .recurrenceRule(com.budgettracker.backend.dto.CreateRecurrenceRuleRequest.builder()
+                        .frequency(RecurrenceFrequency.DAILY)
+                        .interval(1)
+                        .startDate(LocalDate.now())
+                        .build())
+                .build();
+
+        String res = mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        var dto = objectMapper.readValue(res, com.budgettracker.backend.dto.TransactionDto.class);
+        Long txId = dto.getId();
+        Long ruleId = dto.getRecurrenceRuleId();
+
+        transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .amount(new BigDecimal("30.00"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("30.00"))
+                .convertedCurrency("EUR")
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now().plusDays(1))
+                .recurrenceRuleId(ruleId)
+                .build());
+
+        mockMvc.perform(delete("/v1/transactions/" + txId)
+                        .header("X-User-Id", testUser.getId())
+                        .param("mode", "THIS_ONLY"))
+                .andExpect(status().isNoContent());
+
+        List<Transaction> remaining = transactionRepository.findByRecurrenceRuleId(ruleId);
+        assertEquals(1, remaining.size());
+        assertTrue(recurrenceRuleRepository.findById(ruleId).isPresent());
+
+        Long siblingId = remaining.get(0).getId();
+        mockMvc.perform(delete("/v1/transactions/" + siblingId)
+                        .header("X-User-Id", testUser.getId())
+                        .param("mode", "ALL"))
+                .andExpect(status().isNoContent());
+
+        assertTrue(transactionRepository.findByRecurrenceRuleId(ruleId).isEmpty());
+        assertFalse(recurrenceRuleRepository.findById(ruleId).isPresent());
+    }
+
+    @Test
+    public void testDeleteTransaction_Forbidden() throws Exception {
+        var tx = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .amount(new BigDecimal("10.00"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("10.00"))
+                .convertedCurrency("EUR")
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .build());
+        mockMvc.perform(delete("/v1/transactions/" + tx.getId())
+                        .header("X-User-Id", otherUser.getId()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testGetTransactions_NoStartDate() throws Exception {
+        mockMvc.perform(get("/v1/transactions")
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isOk());
     }
 }
 

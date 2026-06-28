@@ -64,15 +64,17 @@ public class BudgetRepository {
                     .fetchOne();
             return mapRecordToBudget(record);
         } else {
+            RolloverRuleType rolloverRule = budget.getRolloverRule() != null ? budget.getRolloverRule() : RolloverRuleType.NONE;
             dsl.update(BUDGETS)
                     .set(BUDGETS.CATEGORY_ID, budget.getCategoryId())
                     .set(BUDGETS.AMOUNT_LIMIT, budget.getAmountLimit())
                     .set(BUDGETS.START_DATE, budget.getStartDate())
                     .set(BUDGETS.END_DATE, budget.getEndDate())
-                    .set(BUDGETS.ROLLOVER_RULE, budget.getRolloverRule() != null ? budget.getRolloverRule() : RolloverRuleType.NONE)
+                    .set(BUDGETS.ROLLOVER_RULE, rolloverRule)
                     .set(BUDGETS.UPDATED_AT, now)
                     .where(BUDGETS.ID.eq(budget.getId()))
                     .execute();
+            budget.setRolloverRule(rolloverRule);
             budget.setUpdatedAt(now);
             return budget;
         }

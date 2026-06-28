@@ -16,6 +16,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -201,5 +202,27 @@ public class AccountControllerIntegrationTest {
         mockMvc.perform(delete("/v1/accounts/" + account.getId())
                         .header("X-User-Id", testUser.getId()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser
+    public void testUserArgumentResolver_MalformedUserIdHeader() throws Exception {
+        mockMvc.perform(get("/v1/accounts")
+                        .header("X-User-Id", "not-a-number"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser
+    public void testUserArgumentResolver_MockUserFallback() throws Exception {
+        mockMvc.perform(get("/v1/accounts"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void testJwtFilter_MalformedToken() throws Exception {
+        mockMvc.perform(get("/v1/accounts")
+                        .header("Authorization", "Bearer invalidtokenbody"))
+                .andExpect(status().isUnauthorized());
     }
 }

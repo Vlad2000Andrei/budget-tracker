@@ -131,4 +131,12 @@ public class CategoryRepositoryTest {
         // Standard hierarchy has no circular dependency
         assertFalse(categoryRepository.hasCircularDependency(grandchild.getId(), parent.getId()));
     }
+
+    @Test
+    public void testBoundaryNullChecks() {
+        assertTrue(categoryRepository.getDescendantCategoryIds(null).isEmpty());
+        assertFalse(categoryRepository.hasDescendantTransactions(null));
+        assertFalse(categoryRepository.hasCircularDependency(null, 1L));
+        assertFalse(categoryRepository.hasCircularDependency(1L, null));
+    }
 }
