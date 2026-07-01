@@ -80,6 +80,7 @@ public class DashboardService {
                         accountSummaries.add(DashboardSummaryDto.AccountSummaryDto.builder()
                                         .id(account.getId())
                                         .name(account.getName())
+                                        .type(account.getType())
                                         .balance(account.getBalance())
                                         .currency(account.getCurrency())
                                         .convertedBalance(converted)

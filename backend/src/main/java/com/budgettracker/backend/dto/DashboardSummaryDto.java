@@ -1,5 +1,6 @@
 package com.budgettracker.backend.dto;
 
+import com.budgettracker.backend.jooq.enums.AccountType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,6 +33,7 @@ public class DashboardSummaryDto {
     public static class AccountSummaryDto {
         private Long id;
         private String name;
+        private AccountType type;
         private BigDecimal balance;
         private String currency;
         private BigDecimal convertedBalance;

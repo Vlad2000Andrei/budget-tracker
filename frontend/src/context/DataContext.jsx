@@ -96,7 +96,21 @@ export function DataProvider({ children }) {
       const res = await axiosInstance.get('/v1/dashboard-summary');
       setDashboardSummary(res.data);
       if (res.data?.accounts) {
-        setAccounts(res.data.accounts); // sync accounts with summary
+        setAccounts(prev => {
+          const summaryMap = new Map(res.data.accounts.map(a => [a.id, a]));
+          if (prev.length === 0) return res.data.accounts;
+          return prev.map(acc => {
+            const summary = summaryMap.get(acc.id);
+            if (summary) {
+              return {
+                ...acc,
+                ...summary,
+                type: summary.type || acc.type,
+              };
+            }
+            return acc;
+          });
+        });
       }
     } catch (err) {
       console.error('Failed to fetch dashboard summary:', err);
