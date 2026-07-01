@@ -263,16 +263,20 @@ export default function GoalsPage() {
     setTxGoal(goal);
     setTxType(type);
     // Pre-select sensible defaults: first non-savings as FROM for deposit, first savings-type as FROM for withdrawal
-    const firstAccount = accounts[0];
-    const secondAccount = accounts[1];
+    const checkingAccount = accounts.find(a => a.type !== 'SAVINGS');
+    const savingsAccount = accounts.find(a => a.type === 'SAVINGS');
     if (type === 'DEPOSIT') {
-      setTxFromAccountId(firstAccount ? firstAccount.id.toString() : '');
-      setTxToAccountId(secondAccount ? secondAccount.id.toString() : (firstAccount ? firstAccount.id.toString() : ''));
-      setTxCurrency(firstAccount ? firstAccount.currency : (user?.defaultCurrency || 'USD'));
+      const fromAcc = checkingAccount;
+      const toAcc = savingsAccount;
+      setTxFromAccountId(fromAcc ? fromAcc.id.toString() : '');
+      setTxToAccountId(toAcc ? toAcc.id.toString() : '');
+      setTxCurrency(fromAcc ? fromAcc.currency : (user?.defaultCurrency || 'USD'));
     } else {
-      setTxFromAccountId(secondAccount ? secondAccount.id.toString() : (firstAccount ? firstAccount.id.toString() : ''));
-      setTxToAccountId(firstAccount ? firstAccount.id.toString() : '');
-      setTxCurrency(secondAccount ? secondAccount.currency : (firstAccount ? firstAccount.currency : (user?.defaultCurrency || 'USD')));
+      const fromAcc = savingsAccount;
+      const toAcc = checkingAccount;
+      setTxFromAccountId(fromAcc ? fromAcc.id.toString() : '');
+      setTxToAccountId(toAcc ? toAcc.id.toString() : '');
+      setTxCurrency(fromAcc ? fromAcc.currency : (user?.defaultCurrency || 'USD'));
     }
     setTxAmount('');
     setTxDate(new Date().toISOString().slice(0, 16));

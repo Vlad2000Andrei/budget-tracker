@@ -153,6 +153,33 @@ export default function AddTransactionModal({ onClose, transaction }) {
       });
   }, [dbAccounts]);
 
+  // Set default from/to accounts when switching to MOVE/SAVINGS if they are empty
+  useEffect(() => {
+    if (ACCOUNTS.length > 0) {
+      setForm(f => {
+        if (f.type === 'SAVINGS' && !f.fromAccountId && !f.toAccountId) {
+          const firstChecking = ACCOUNTS.find(a => a.type !== 'SAVINGS');
+          const firstSavings = ACCOUNTS.find(a => a.type === 'SAVINGS');
+          return {
+            ...f,
+            fromAccountId: firstChecking ? firstChecking.id.toString() : '',
+            toAccountId: firstSavings ? firstSavings.id.toString() : '',
+          };
+        }
+        if (f.type === 'MOVE' && !f.fromAccountId && !f.toAccountId) {
+          const firstAcc = ACCOUNTS[0];
+          const secondAcc = ACCOUNTS.find(a => a.id !== firstAcc?.id && a.type === firstAcc?.type);
+          return {
+            ...f,
+            fromAccountId: firstAcc ? firstAcc.id.toString() : '',
+            toAccountId: secondAcc ? secondAcc.id.toString() : '',
+          };
+        }
+        return f;
+      });
+    }
+  }, [ACCOUNTS, form.type]);
+
   const categories = CATEGORIES_BY_TYPE[form.type] ?? [];
   const recentChips = categories.slice(0, 10);
   const searchResults = categorySearch.length >= 2
