@@ -95,6 +95,37 @@ export default function AddTransactionModal({ onClose, transaction }) {
     }
   }, [user, transaction]);
 
+  const isFirstRender = useRef(true);
+
+  // Fetch exchange rate when currency changes
+  useEffect(() => {
+    const defaultCurrency = user?.defaultCurrency || 'USD';
+    
+    // If editing a transaction, do not fetch the rate on the first render to preserve the saved rate
+    if (transaction && isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    isFirstRender.current = false;
+
+    if (form.currency === defaultCurrency) {
+      set('exchangeRate', '1.0');
+      return;
+    }
+
+    async function fetchRate() {
+      try {
+        const res = await axiosInstance.get(`/v1/exchange-rates?from=${form.currency}&to=${defaultCurrency}`);
+        if (res.data?.rate) {
+          set('exchangeRate', res.data.rate.toString());
+        }
+      } catch (err) {
+        console.warn("Failed to fetch exchange rate", err);
+      }
+    }
+    fetchRate();
+  }, [form.currency, user?.defaultCurrency, transaction]);
+
   // Auto-focus amount on open
   useEffect(() => {
     const timer = setTimeout(() => amountRef.current?.focus(), 350);
