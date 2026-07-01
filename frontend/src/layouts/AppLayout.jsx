@@ -118,7 +118,7 @@ export default function AppLayout() {
         {/* Mobile Top App Bar */}
         <header className={styles.mobileTopBar} aria-label="Application header">
           <div className={styles.logo}>
-            <span className={styles.logoIcon}>💰</span>
+            <img src="/favicon.png" alt="Budget Tracker Logo" className={styles.logoImage} />
             <span className={styles.logoText}>Budget Tracker</span>
           </div>
 

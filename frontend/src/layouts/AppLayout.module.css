@@ -73,8 +73,11 @@
     gap: 8px;
   }
 
-  .logoIcon {
-    font-size: 24px;
+  .logoImage {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    flex-shrink: 0;
   }
 
   .logoText {

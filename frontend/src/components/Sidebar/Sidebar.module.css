@@ -28,8 +28,10 @@
   overflow: hidden;
 }
 
-.logoIcon {
-  font-size: 28px;
+.logoImage {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 

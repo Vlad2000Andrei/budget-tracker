@@ -69,7 +69,7 @@ export default function LoginPage() {
 
       <div className={styles.card} role="main">
         <div className={styles.logoRow}>
-          <span className={styles.logoEmoji} aria-hidden="true">💰</span>
+          <img src="/favicon.png" alt="Budget Tracker Logo" className={styles.logoImage} aria-hidden="true" />
           <h1 className={styles.appName}>Budget Tracker</h1>
         </div>
 

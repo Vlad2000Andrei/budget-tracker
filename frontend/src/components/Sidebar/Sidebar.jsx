@@ -91,7 +91,7 @@ export default function Sidebar({ onCollapse, collapsed }) {
     <nav className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`} aria-label="Main navigation">
       {/* Logo */}
       <div className={styles.logo}>
-        <span className={styles.logoIcon} aria-hidden="true">💰</span>
+        <img src="/favicon.png" alt="Budget Tracker Logo" className={styles.logoImage} aria-hidden="true" />
         {!collapsed && <span className={styles.logoText}>Budget Tracker</span>}
       </div>
 
