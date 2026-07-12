@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.budgettracker.backend.jooq.Tables.TRANSACTIONS;
+import static com.budgettracker.backend.jooq.Tables.SAVINGS_TRANSACTIONS;
 
 @Repository
 public class TransactionRepository {
@@ -39,7 +40,14 @@ public class TransactionRepository {
         conditions.add(TRANSACTIONS.USER_ID.eq(userId));
 
         if (accountId != null) {
-            conditions.add(TRANSACTIONS.ACCOUNT_ID.eq(accountId));
+            conditions.add(TRANSACTIONS.ACCOUNT_ID.eq(accountId)
+                    .or(TRANSACTIONS.ID.in(
+                            dsl.select(SAVINGS_TRANSACTIONS.TRANSACTION_ID)
+                                    .from(SAVINGS_TRANSACTIONS)
+                                    .where(SAVINGS_TRANSACTIONS.FROM_ACCOUNT_ID.eq(accountId)
+                                            .or(SAVINGS_TRANSACTIONS.TO_ACCOUNT_ID.eq(accountId)))
+                    ))
+            );
         }
         if (categoryId != null) {
             conditions.add(TRANSACTIONS.CATEGORY_ID.eq(categoryId));

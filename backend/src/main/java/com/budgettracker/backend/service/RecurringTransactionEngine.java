@@ -30,21 +30,18 @@ public class RecurringTransactionEngine {
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
     private final CurrencyExchangeService currencyExchangeService;
-    private final SavingsGoalService savingsGoalService;
 
     @Autowired
     public RecurringTransactionEngine(RecurrenceRuleRepository recurrenceRuleRepository,
                                       TransactionRepository transactionRepository,
                                       AccountRepository accountRepository,
                                       UserRepository userRepository,
-                                      CurrencyExchangeService currencyExchangeService,
-                                      SavingsGoalService savingsGoalService) {
+                                      CurrencyExchangeService currencyExchangeService) {
         this.recurrenceRuleRepository = recurrenceRuleRepository;
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
         this.currencyExchangeService = currencyExchangeService;
-        this.savingsGoalService = savingsGoalService;
     }
 
     @Scheduled(cron = "0 0 0 * * *") // Run daily at midnight
@@ -137,10 +134,7 @@ public class RecurringTransactionEngine {
             }
         }
 
-        // Reconcile savings goals if applicable
-        if (template.getType() == CategoryType.SAVINGS) {
-            savingsGoalService.reconcileAllGoalsForCategory(user.getId(), template.getCategoryId());
-        }
+        // No manual reconciliation trigger needed since progress is computed dynamically.
     }
 
     private void adjustAccountBalance(Account account, BigDecimal amount, CategoryType type) {

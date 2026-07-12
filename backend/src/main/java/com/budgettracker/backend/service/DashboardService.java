@@ -33,6 +33,7 @@ public class DashboardService {
         private final SavingsGoalRepository savingsGoalRepository;
         private final CategoryRepository categoryRepository;
         private final CurrencyExchangeService currencyExchangeService;
+        private final SavingsGoalService savingsGoalService;
         private final DSLContext dsl;
 
         @Autowired
@@ -41,12 +42,14 @@ public class DashboardService {
                         SavingsGoalRepository savingsGoalRepository,
                         CategoryRepository categoryRepository,
                         CurrencyExchangeService currencyExchangeService,
+                        SavingsGoalService savingsGoalService,
                         DSLContext dsl) {
                 this.accountService = accountService;
                 this.budgetRepository = budgetRepository;
                 this.savingsGoalRepository = savingsGoalRepository;
                 this.categoryRepository = categoryRepository;
                 this.currencyExchangeService = currencyExchangeService;
+                this.savingsGoalService = savingsGoalService;
                 this.dsl = dsl;
         }
 
@@ -184,10 +187,11 @@ public class DashboardService {
 
                 for (SavingsGoal goal : savingsGoals) {
                         Category category = categoryRepository.findById(goal.getCategoryId()).orElse(null);
+                        BigDecimal currentAmount = savingsGoalService.calculateCurrentAmount(goal, user);
 
                         int pct = 0;
                         if (goal.getTargetAmount().compareTo(BigDecimal.ZERO) > 0) {
-                                pct = goal.getCurrentAmount().multiply(new BigDecimal("100"))
+                                pct = currentAmount.multiply(new BigDecimal("100"))
                                                 .divide(goal.getTargetAmount(), 0, RoundingMode.HALF_UP)
                                                 .intValue();
                         }
@@ -198,7 +202,7 @@ public class DashboardService {
                                         .categoryName(category != null ? category.getName() : "Unknown")
                                         .categoryIcon(category != null ? category.getIcon() : "")
                                         .categoryColor(category != null ? category.getColor() : "")
-                                        .current(goal.getCurrentAmount())
+                                        .current(currentAmount)
                                         .target(goal.getTargetAmount())
                                         .pct(pct)
                                         .build());

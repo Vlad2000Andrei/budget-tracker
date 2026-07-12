@@ -65,7 +65,7 @@ public class SavingsGoalService {
     public List<SavingsGoalDto> getSavingsGoals(User user) {
         return savingsGoalRepository.findByUserId(user.getId())
                 .stream()
-                .map(this::mapToDto)
+                .map(g -> mapToDto(g, user))
                 .collect(Collectors.toList());
     }
 
@@ -84,29 +84,16 @@ public class SavingsGoalService {
             throw new IllegalArgumentException("Savings goals can only be set on categories of type SAVINGS");
         }
 
-        // Calculate initial accumulated amount
-        List<Long> descendants = categoryRepository.getDescendantCategoryIds(request.getCategoryId());
-        BigDecimal initialAccumulated = BigDecimal.ZERO;
-        if (request.getGoalType() == SavingsGoalType.MONTHLY) {
-            LocalDate today = LocalDate.now();
-            LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
-            LocalDateTime startOfNextMonth = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
-            initialAccumulated = calculateAccumulatedSavingsInPeriod(user, descendants, startOfMonth, startOfNextMonth);
-        } else {
-            initialAccumulated = calculateAccumulatedSavings(user, descendants);
-        }
-
         SavingsGoal goal = SavingsGoal.builder()
                 .userId(user.getId())
                 .categoryId(request.getCategoryId())
                 .goalType(request.getGoalType())
                 .targetAmount(request.getTargetAmount())
-                .currentAmount(initialAccumulated)
                 .targetDate(request.getTargetDate())
                 .build();
 
         SavingsGoal saved = savingsGoalRepository.save(goal);
-        return mapToDto(saved);
+        return mapToDto(saved, user);
     }
 
     @Transactional
@@ -132,26 +119,13 @@ public class SavingsGoalService {
             throw new IllegalArgumentException("Savings goals can only be set on categories of type SAVINGS");
         }
 
-        // Recalculate accumulated amount in case category changed
-        List<Long> descendants = categoryRepository.getDescendantCategoryIds(request.getCategoryId());
-        BigDecimal accumulated = BigDecimal.ZERO;
-        if (request.getGoalType() == SavingsGoalType.MONTHLY) {
-            LocalDate today = LocalDate.now();
-            LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
-            LocalDateTime startOfNextMonth = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
-            accumulated = calculateAccumulatedSavingsInPeriod(user, descendants, startOfMonth, startOfNextMonth);
-        } else {
-            accumulated = calculateAccumulatedSavings(user, descendants);
-        }
-
         existing.setCategoryId(request.getCategoryId());
         existing.setGoalType(request.getGoalType());
         existing.setTargetAmount(request.getTargetAmount());
-        existing.setCurrentAmount(accumulated);
         existing.setTargetDate(request.getTargetDate());
 
         SavingsGoal updated = savingsGoalRepository.save(existing);
-        return mapToDto(updated);
+        return mapToDto(updated, user);
     }
 
     @Transactional
@@ -263,10 +237,13 @@ public class SavingsGoalService {
 
         if (!isDeposit) {
             // Withdrawal: goal must have enough accumulated savings to cover this (if goal is present)
-            if (goal != null && goal.getCurrentAmount().compareTo(convertedAmount) < 0) {
-                throw new IllegalArgumentException(
-                        "Withdrawal exceeds current savings goal balance. Available: "
-                        + goal.getCurrentAmount() + " " + user.getDefaultCurrency());
+            if (goal != null) {
+                BigDecimal currentAmount = calculateCurrentAmount(goal, user);
+                if (currentAmount.compareTo(convertedAmount) < 0) {
+                    throw new IllegalArgumentException(
+                            "Withdrawal exceeds current savings goal balance. Available: "
+                            + currentAmount + " " + user.getDefaultCurrency());
+                }
             }
         }
 
@@ -312,10 +289,7 @@ public class SavingsGoalService {
                 .build();
         SavingsGoalTransaction savedSgt = savingsGoalTransactionRepository.save(sgt);
 
-        // 8. Reconcile goal currentAmount
-        if (resolvedCategoryId != null) {
-            reconcileAllGoalsForCategory(user.getId(), resolvedCategoryId);
-        }
+        // No manual reconciliation trigger needed since progress is computed dynamically.
 
         // Re-fetch accounts for fresh balances
         Account updatedFrom = accountRepository.findById(fromAccount.getId()).orElse(fromAccount);
@@ -385,45 +359,18 @@ public class SavingsGoalService {
     }
 
     @Transactional
-    public void reconcileGoalAmount(Long userId, Long categoryId) {
-        List<SavingsGoal> goals = savingsGoalRepository.findByCategoryId(categoryId)
-                .stream()
-                .filter(g -> g.getUserId().equals(userId))
-                .collect(Collectors.toList());
-
-        if (goals.isEmpty()) {
-            return;
+    public BigDecimal calculateCurrentAmount(SavingsGoal goal, User user) {
+        if (user == null || goal == null) {
+            return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
         }
-
-        User user = userRepository.findById(userId).orElse(null);
-
-        for (SavingsGoal goal : goals) {
-            BigDecimal sum = BigDecimal.ZERO;
-            if (user != null) {
-                List<Long> descendants = categoryRepository.getDescendantCategoryIds(categoryId);
-                if (goal.getGoalType() == SavingsGoalType.MONTHLY) {
-                    LocalDate today = LocalDate.now();
-                    LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
-                    LocalDateTime startOfNextMonth = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
-                    sum = calculateAccumulatedSavingsInPeriod(user, descendants, startOfMonth, startOfNextMonth);
-                } else {
-                    sum = calculateAccumulatedSavings(user, descendants);
-                }
-            }
-            goal.setCurrentAmount(sum);
-            savingsGoalRepository.save(goal);
-        }
-    }
-
-    @Transactional
-    public void reconcileAllGoalsForCategory(Long userId, Long categoryId) {
-        Long currentCategoryId = categoryId;
-        int depth = 0;
-        while (currentCategoryId != null && depth < 100) {
-            reconcileGoalAmount(userId, currentCategoryId);
-            Category cat = categoryRepository.findById(currentCategoryId).orElse(null);
-            currentCategoryId = (cat != null) ? cat.getParentId() : null;
-            depth++;
+        List<Long> descendants = categoryRepository.getDescendantCategoryIds(goal.getCategoryId());
+        if (goal.getGoalType() == SavingsGoalType.MONTHLY) {
+            LocalDate today = LocalDate.now();
+            LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+            LocalDateTime startOfNextMonth = today.withDayOfMonth(1).plusMonths(1).atStartOfDay();
+            return calculateAccumulatedSavingsInPeriod(user, descendants, startOfMonth, startOfNextMonth);
+        } else {
+            return calculateAccumulatedSavings(user, descendants);
         }
     }
 
@@ -447,7 +394,7 @@ public class SavingsGoalService {
         return sum;
     }
 
-    private SavingsGoalDto mapToDto(SavingsGoal goal) {
+    private SavingsGoalDto mapToDto(SavingsGoal goal, User user) {
         if (goal == null) {
             return null;
         }
@@ -457,7 +404,7 @@ public class SavingsGoalService {
                 .categoryId(goal.getCategoryId())
                 .goalType(goal.getGoalType())
                 .targetAmount(goal.getTargetAmount())
-                .currentAmount(goal.getCurrentAmount())
+                .currentAmount(calculateCurrentAmount(goal, user))
                 .targetDate(goal.getTargetDate())
                 .createdAt(goal.getCreatedAt())
                 .updatedAt(goal.getUpdatedAt())

@@ -100,7 +100,7 @@ public class RecurringTransactionEngineTest {
         CreateRecurrenceRuleRequest ruleRequest = CreateRecurrenceRuleRequest.builder()
                 .frequency(RecurrenceFrequency.MONTHLY)
                 .interval(1)
-                .startDate(LocalDate.of(2026, 6, 1))
+                .startDate(LocalDate.now())
                 .build();
 
         CreateTransactionRequest txRequest = CreateTransactionRequest.builder()
@@ -109,7 +109,7 @@ public class RecurringTransactionEngineTest {
                 .amount(new BigDecimal("15.00"))
                 .currency("USD")
                 .type(CategoryType.EXPENSE)
-                .date(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .date(LocalDate.now().atTime(10, 0))
                 .notes("Netflix")
                 .recurrenceRule(ruleRequest)
                 .build();
@@ -120,7 +120,7 @@ public class RecurringTransactionEngineTest {
         assertNotNull(created.getRecurrenceRule());
         assertEquals(RecurrenceFrequency.MONTHLY, created.getRecurrenceRule().getFrequency());
         assertEquals(1, created.getRecurrenceRule().getInterval());
-        assertEquals(LocalDate.of(2026, 6, 1), created.getRecurrenceRule().getStartDate());
+        assertEquals(LocalDate.now(), created.getRecurrenceRule().getStartDate());
 
         // Account balance should have been reduced by $15
         Account updatedAccount = accountRepository.findById(account.getId()).orElseThrow();
@@ -247,7 +247,7 @@ public class RecurringTransactionEngineTest {
         CreateRecurrenceRuleRequest ruleRequest = CreateRecurrenceRuleRequest.builder()
                 .frequency(RecurrenceFrequency.MONTHLY)
                 .interval(1)
-                .startDate(LocalDate.of(2026, 6, 1))
+                .startDate(LocalDate.now())
                 .build();
 
         CreateTransactionRequest txRequest = CreateTransactionRequest.builder()
@@ -256,7 +256,7 @@ public class RecurringTransactionEngineTest {
                 .amount(new BigDecimal("15.00"))
                 .currency("USD")
                 .type(CategoryType.EXPENSE)
-                .date(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .date(LocalDate.now().atTime(10, 0))
                 .notes("Netflix")
                 .recurrenceRule(ruleRequest)
                 .build();

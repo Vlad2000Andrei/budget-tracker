@@ -2,6 +2,8 @@ package com.budgettracker.backend.controller;
 
 import com.budgettracker.backend.dto.CreateTransactionRequest;
 import com.budgettracker.backend.dto.UpdateTransactionRequest;
+import com.budgettracker.backend.dto.CreateSavingsTransactionRequest;
+import com.budgettracker.backend.dto.SavingsTransactionDto;
 import com.budgettracker.backend.jooq.enums.AccountType;
 import com.budgettracker.backend.jooq.enums.CategoryType;
 import com.budgettracker.backend.model.Account;
@@ -17,6 +19,7 @@ import com.budgettracker.backend.jooq.enums.SavingsGoalType;
 import com.budgettracker.backend.model.RecurrenceRule;
 import com.budgettracker.backend.repository.RecurrenceRuleRepository;
 import com.budgettracker.backend.repository.SavingsGoalRepository;
+import com.budgettracker.backend.repository.SavingsGoalTransactionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,6 +76,9 @@ public class TransactionControllerIntegrationTest {
 
     @Autowired
     private SavingsGoalRepository savingsGoalRepository;
+    
+    @Autowired
+    private SavingsGoalTransactionRepository savingsGoalTransactionRepository;
 
     @Autowired
     private DSLContext dsl;
@@ -1136,6 +1142,220 @@ public class TransactionControllerIntegrationTest {
         mockMvc.perform(get("/v1/transactions")
                         .header("X-User-Id", testUser.getId()))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    public void testDeleteSavingsTransaction_Success() throws Exception {
+        // 1. Create a savings transaction
+        CreateSavingsTransactionRequest createReq = CreateSavingsTransactionRequest.builder()
+                .fromAccountId(eurAccount.getId())
+                .toAccountId(ronAccount.getId())
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .type(com.budgettracker.backend.jooq.enums.SavingsTransactionType.DEPOSIT)
+                .date(LocalDateTime.now())
+                .notes("Test savings move")
+                .categoryId(savingsCategory.getId())
+                .build();
+
+        String res = mockMvc.perform(post("/v1/transactions/savings")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createReq)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        SavingsTransactionDto dto = objectMapper.readValue(res, SavingsTransactionDto.class);
+        Long txId = dto.getTransactionId();
+
+        // Verify transaction exists in db
+        assertTrue(transactionRepository.findById(txId).isPresent());
+        assertTrue(savingsGoalTransactionRepository.findByTransactionId(txId).isPresent());
+
+        // 2. Delete it
+        mockMvc.perform(delete("/v1/transactions/" + txId)
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isNoContent());
+
+        // Verify transaction is deleted and cascade works
+        assertFalse(transactionRepository.findById(txId).isPresent());
+        assertFalse(savingsGoalTransactionRepository.findByTransactionId(txId).isPresent());
+    }
+
+    @Test
+    public void testDeleteSavingsTransaction_BalancesReversed() throws Exception {
+        Account eurSavingsAccount = accountRepository.save(Account.builder()
+                .userId(testUser.getId())
+                .name("EUR Savings Account")
+                .type(AccountType.SAVINGS)
+                .balance(new BigDecimal("500.0000"))
+                .currency("EUR")
+                .build());
+
+        BigDecimal initialEurBalance = eurAccount.getBalance();
+        BigDecimal initialSavingsBalance = eurSavingsAccount.getBalance();
+
+        // 1. Create savings deposit
+        CreateSavingsTransactionRequest createReq = CreateSavingsTransactionRequest.builder()
+                .fromAccountId(eurAccount.getId())
+                .toAccountId(eurSavingsAccount.getId())
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .type(com.budgettracker.backend.jooq.enums.SavingsTransactionType.DEPOSIT)
+                .date(LocalDateTime.now())
+                .notes("Deposit to savings")
+                .categoryId(savingsCategory.getId())
+                .build();
+
+        String res = mockMvc.perform(post("/v1/transactions/savings")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createReq)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        SavingsTransactionDto dto = objectMapper.readValue(res, SavingsTransactionDto.class);
+        Long txId = dto.getTransactionId();
+
+        // Verify account balances changed
+        Account midEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        Account midSavings = accountRepository.findById(eurSavingsAccount.getId()).orElseThrow();
+        assertEquals(initialEurBalance.subtract(new BigDecimal("100.0000")).stripTrailingZeros(), midEur.getBalance().stripTrailingZeros());
+        assertEquals(initialSavingsBalance.add(new BigDecimal("100.0000")).stripTrailingZeros(), midSavings.getBalance().stripTrailingZeros());
+
+        // 2. Delete savings deposit
+        mockMvc.perform(delete("/v1/transactions/" + txId)
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isNoContent());
+
+        // Verify account balances reversed
+        Account finalEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        Account finalSavings = accountRepository.findById(eurSavingsAccount.getId()).orElseThrow();
+        assertEquals(initialEurBalance.stripTrailingZeros(), finalEur.getBalance().stripTrailingZeros());
+        assertEquals(initialSavingsBalance.stripTrailingZeros(), finalSavings.getBalance().stripTrailingZeros());
+    }
+
+    @Test
+    public void testPatchSavingsTransaction_AmountUpdated() throws Exception {
+        Account eurSavingsAccount = accountRepository.save(Account.builder()
+                .userId(testUser.getId())
+                .name("EUR Savings Account")
+                .type(AccountType.SAVINGS)
+                .balance(new BigDecimal("500.0000"))
+                .currency("EUR")
+                .build());
+
+        BigDecimal initialEurBalance = eurAccount.getBalance();
+        BigDecimal initialSavingsBalance = eurSavingsAccount.getBalance();
+
+        // 1. Create savings deposit
+        CreateSavingsTransactionRequest createReq = CreateSavingsTransactionRequest.builder()
+                .fromAccountId(eurAccount.getId())
+                .toAccountId(eurSavingsAccount.getId())
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .type(com.budgettracker.backend.jooq.enums.SavingsTransactionType.DEPOSIT)
+                .date(LocalDateTime.now())
+                .notes("Deposit to savings")
+                .categoryId(savingsCategory.getId())
+                .build();
+
+        String res = mockMvc.perform(post("/v1/transactions/savings")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createReq)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        SavingsTransactionDto dto = objectMapper.readValue(res, SavingsTransactionDto.class);
+        Long txId = dto.getTransactionId();
+
+        // 2. Patch the amount from 100 to 150
+        UpdateTransactionRequest patchReq = UpdateTransactionRequest.builder()
+                .amount(new BigDecimal("150.00"))
+                .currency("EUR")
+                .categoryId(savingsCategory.getId())
+                .accountId(eurAccount.getId())
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .notes("Updated deposit to savings")
+                .build();
+
+        mockMvc.perform(patch("/v1/transactions/" + txId)
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(patchReq)))
+                .andExpect(status().isOk());
+
+        // Verify account balances updated correctly
+        Account finalEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        Account finalSavings = accountRepository.findById(eurSavingsAccount.getId()).orElseThrow();
+        assertEquals(initialEurBalance.subtract(new BigDecimal("150.0000")).stripTrailingZeros(), finalEur.getBalance().stripTrailingZeros());
+        assertEquals(initialSavingsBalance.add(new BigDecimal("150.0000")).stripTrailingZeros(), finalSavings.getBalance().stripTrailingZeros());
+    }
+
+    @Test
+    public void testPatchSavingsTransaction_TypeChanged() throws Exception {
+        Account eurSavingsAccount = accountRepository.save(Account.builder()
+                .userId(testUser.getId())
+                .name("EUR Savings Account")
+                .type(AccountType.SAVINGS)
+                .balance(new BigDecimal("500.0000"))
+                .currency("EUR")
+                .build());
+
+        BigDecimal initialEurBalance = eurAccount.getBalance();
+        BigDecimal initialSavingsBalance = eurSavingsAccount.getBalance();
+
+        // 1. Create savings deposit
+        CreateSavingsTransactionRequest createReq = CreateSavingsTransactionRequest.builder()
+                .fromAccountId(eurAccount.getId())
+                .toAccountId(eurSavingsAccount.getId())
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .type(com.budgettracker.backend.jooq.enums.SavingsTransactionType.DEPOSIT)
+                .date(LocalDateTime.now())
+                .notes("Deposit to savings")
+                .categoryId(savingsCategory.getId())
+                .build();
+
+        String res = mockMvc.perform(post("/v1/transactions/savings")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createReq)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        SavingsTransactionDto dto = objectMapper.readValue(res, SavingsTransactionDto.class);
+        Long txId = dto.getTransactionId();
+
+        // 2. Patch type from SAVINGS to EXPENSE
+        UpdateTransactionRequest patchReq = UpdateTransactionRequest.builder()
+                .amount(new BigDecimal("100.00"))
+                .currency("EUR")
+                .categoryId(expenseCategory.getId())
+                .accountId(eurAccount.getId())
+                .type(CategoryType.EXPENSE)
+                .date(LocalDateTime.now())
+                .notes("Changed to Expense")
+                .build();
+
+        mockMvc.perform(patch("/v1/transactions/" + txId)
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(patchReq)))
+                .andExpect(status().isOk());
+
+        // Verify savings account balance is reversed (back to initial)
+        Account finalSavings = accountRepository.findById(eurSavingsAccount.getId()).orElseThrow();
+        assertEquals(initialSavingsBalance.stripTrailingZeros(), finalSavings.getBalance().stripTrailingZeros());
+
+        // Verify checking account has expense applied (balance decreases from initial by 100)
+        Account finalEur = accountRepository.findById(eurAccount.getId()).orElseThrow();
+        assertEquals(initialEurBalance.subtract(new BigDecimal("100.0000")).stripTrailingZeros(), finalEur.getBalance().stripTrailingZeros());
+
+        // Verify mapping record is deleted
+        assertFalse(savingsGoalTransactionRepository.findByTransactionId(txId).isPresent());
     }
 }
 

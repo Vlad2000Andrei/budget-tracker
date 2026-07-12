@@ -291,7 +291,6 @@ public class ImportControllerIntegrationTest {
                 .categoryId(savingsCategory.getId())
                 .goalType(com.budgettracker.backend.jooq.enums.SavingsGoalType.ONE_OFF)
                 .targetAmount(new BigDecimal("2000.00"))
-                .currentAmount(BigDecimal.ZERO)
                 .build();
 
         Long goalId = dsl.insertInto(SAVINGS_GOALS)
@@ -299,7 +298,6 @@ public class ImportControllerIntegrationTest {
                 .set(SAVINGS_GOALS.CATEGORY_ID, goal.getCategoryId())
                 .set(SAVINGS_GOALS.GOAL_TYPE, goal.getGoalType())
                 .set(SAVINGS_GOALS.TARGET_AMOUNT, goal.getTargetAmount())
-                .set(SAVINGS_GOALS.CURRENT_AMOUNT, goal.getCurrentAmount())
                 .returning(SAVINGS_GOALS.ID)
                 .fetchOne()
                 .getId();

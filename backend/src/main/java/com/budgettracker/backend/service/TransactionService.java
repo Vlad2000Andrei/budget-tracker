@@ -205,10 +205,7 @@ public class TransactionService {
             adjustAccountBalance(request.getAccountId(), accountAmount, request.getType());
         }
 
-        // Reconcile savings goal if applicable
-        if (request.getType() == CategoryType.SAVINGS) {
-            savingsGoalService.reconcileAllGoalsForCategory(user.getId(), request.getCategoryId());
-        }
+        // No manual reconciliation trigger needed since progress is computed dynamically.
 
         if (rule != null) {
             recurringTransactionEngine.processRule(rule, LocalDate.now());
@@ -307,6 +304,8 @@ public class TransactionService {
 
         Long oldCategoryId = existing.getCategoryId();
         CategoryType oldType = existing.getType();
+        BigDecimal oldAmount = existing.getAmount();
+        String oldCurrency = existing.getCurrency();
 
         // Validate Category
         Category category = categoryRepository.findById(request.getCategoryId())
@@ -335,6 +334,24 @@ public class TransactionService {
                     .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + request.getAccountId()));
             if (!validationAccount.getUserId().equals(user.getId())) {
                 throw new ForbiddenActionException("You do not have access to the specified account");
+            }
+        }
+
+        // Retrieve old savings transaction mapping if it existed
+        Optional<SavingsGoalTransaction> oldSgtOpt = Optional.empty();
+        if (oldType == CategoryType.SAVINGS) {
+            oldSgtOpt = savingsGoalTransactionRepository.findByTransactionId(transactionId);
+        }
+
+        // Reverse old target account if it was a SAVINGS transaction
+        if (oldSgtOpt.isPresent()) {
+            var sgt = oldSgtOpt.get();
+            if (sgt.getToAccountId() != null) {
+                Account oldTargetAccount = accountRepository.findById(sgt.getToAccountId()).orElse(null);
+                if (oldTargetAccount != null) {
+                    BigDecimal oldTargetAmount = currencyExchangeService.convert(oldAmount.abs(), oldCurrency, oldTargetAccount.getCurrency());
+                    accountRepository.updateBalance(oldTargetAccount.getId(), oldTargetAmount.negate());
+                }
             }
         }
 
@@ -397,6 +414,10 @@ public class TransactionService {
 
         Transaction updated = transactionRepository.save(existing);
 
+        if (oldSgtOpt.isPresent() && request.getType() != CategoryType.SAVINGS) {
+            savingsGoalTransactionRepository.deleteByTransactionId(transactionId);
+        }
+
         // 3. Apply the new transaction impact on the new account
         if (request.getAccountId() != null) {
             Account targetAccount = accountRepository.findById(request.getAccountId())
@@ -405,13 +426,19 @@ public class TransactionService {
             adjustAccountBalance(request.getAccountId(), newAccountAmount, request.getType());
         }
 
-        // Reconcile savings goals if applicable
-        if (oldType == CategoryType.SAVINGS) {
-            savingsGoalService.reconcileAllGoalsForCategory(user.getId(), oldCategoryId);
+        // Apply new target account balance if still SAVINGS
+        if (request.getType() == CategoryType.SAVINGS && oldSgtOpt.isPresent()) {
+            var sgt = oldSgtOpt.get();
+            if (sgt.getToAccountId() != null) {
+                Account destAccount = accountRepository.findById(sgt.getToAccountId()).orElse(null);
+                if (destAccount != null) {
+                    BigDecimal newTargetAmount = currencyExchangeService.convert(request.getAmount().abs(), request.getCurrency(), destAccount.getCurrency());
+                    accountRepository.updateBalance(destAccount.getId(), newTargetAmount);
+                }
+            }
         }
-        if (request.getType() == CategoryType.SAVINGS && (oldType != CategoryType.SAVINGS || !request.getCategoryId().equals(oldCategoryId))) {
-            savingsGoalService.reconcileAllGoalsForCategory(user.getId(), request.getCategoryId());
-        }
+
+        // No manual reconciliation trigger needed since progress is computed dynamically.
 
         if (updated.getRecurrenceRuleId() != null && request.getRecurrenceRule() != null) {
             RecurrenceRule rule = recurrenceRuleRepository.findById(updated.getRecurrenceRuleId()).orElse(null);
@@ -483,6 +510,18 @@ public class TransactionService {
     }
 
     private void deleteSingleTransactionInternal(Transaction tx) {
+        if (tx.getType() == CategoryType.SAVINGS) {
+            savingsGoalTransactionRepository.findByTransactionId(tx.getId()).ifPresent(sgt -> {
+                if (sgt.getToAccountId() != null) {
+                    Account targetAccount = accountRepository.findById(sgt.getToAccountId()).orElse(null);
+                    if (targetAccount != null) {
+                        BigDecimal targetAmount = currencyExchangeService.convert(tx.getAmount().abs(), tx.getCurrency(), targetAccount.getCurrency());
+                        accountRepository.updateBalance(targetAccount.getId(), targetAmount.negate());
+                    }
+                }
+            });
+        }
+
         if (tx.getAccountId() != null) {
             Account account = accountRepository.findById(tx.getAccountId()).orElse(null);
             if (account != null) {
@@ -502,9 +541,7 @@ public class TransactionService {
         }
 
         transactionRepository.deleteById(tx.getId());
-        if (tx.getType() == CategoryType.SAVINGS) {
-            savingsGoalService.reconcileAllGoalsForCategory(tx.getUserId(), tx.getCategoryId());
-        }
+        // No manual reconciliation trigger needed since progress is computed dynamically.
     }
 
     private void adjustAccountBalance(Long accountId, BigDecimal amount, CategoryType type) {
@@ -599,6 +636,13 @@ public class TransactionService {
                     fromAccountId = linked.getAccountId();
                     toAccountId = transaction.getAccountId();
                 }
+            }
+        } else if (transaction.getType() == CategoryType.SAVINGS) {
+            var sgtOpt = savingsGoalTransactionRepository.findByTransactionId(transaction.getId());
+            if (sgtOpt.isPresent()) {
+                var sgt = sgtOpt.get();
+                fromAccountId = sgt.getFromAccountId();
+                toAccountId = sgt.getToAccountId();
             }
         }
 

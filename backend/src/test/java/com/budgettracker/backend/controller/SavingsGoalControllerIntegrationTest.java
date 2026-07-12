@@ -732,4 +732,109 @@ public class SavingsGoalControllerIntegrationTest {
                         .header("X-User-Id", testUser.getId()))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    public void testSavingsGoal_MonthlyResetsAtStartOfMonth() throws Exception {
+        // 1. Create a MONTHLY savings goal
+        CreateSavingsGoalRequest request = CreateSavingsGoalRequest.builder()
+                .categoryId(parentSavingsCategory.getId())
+                .goalType(SavingsGoalType.MONTHLY)
+                .targetAmount(new BigDecimal("1000.00"))
+                .build();
+
+        String responseContent = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        SavingsGoalDto goal = objectMapper.readValue(responseContent, SavingsGoalDto.class);
+
+        // 2. Post a SAVINGS transaction in the current month (which will be counted since it's the current month)
+        CreateTransactionRequest currentTx = CreateTransactionRequest.builder()
+                .categoryId(childSavingsCategory.getId())
+                .amount(new BigDecimal("200.00"))
+                .currency("USD")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .notes("Current month deposit")
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(currentTx)))
+                .andExpect(status().isCreated());
+
+        // Verify that the current amount is 200.00
+        mockMvc.perform(get("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + goal.getId() + ")].currentAmount", contains(200.00)));
+
+        // 3. Post a transaction 45 days ago (which is in a past month, so it should NOT be counted)
+        CreateTransactionRequest pastTx = CreateTransactionRequest.builder()
+                .categoryId(childSavingsCategory.getId())
+                .amount(new BigDecimal("500.00"))
+                .currency("USD")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now().minusDays(45))
+                .notes("Past month deposit")
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(pastTx)))
+                .andExpect(status().isCreated());
+
+        // Verify that the current amount is still 200.00 (past transaction is ignored)
+        mockMvc.perform(get("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + goal.getId() + ")].currentAmount", contains(200.00)));
+    }
+
+    @Test
+    public void testSavingsGoal_MonthlyGoalZeroInNewMonth() throws Exception {
+        // 1. Create a MONTHLY savings goal
+        CreateSavingsGoalRequest request = CreateSavingsGoalRequest.builder()
+                .categoryId(parentSavingsCategory.getId())
+                .goalType(SavingsGoalType.MONTHLY)
+                .targetAmount(new BigDecimal("1000.00"))
+                .build();
+
+        String responseContent = mockMvc.perform(post("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        SavingsGoalDto goal = objectMapper.readValue(responseContent, SavingsGoalDto.class);
+
+        // 2. Post a SAVINGS transaction 45 days ago (previous month)
+        CreateTransactionRequest pastTx = CreateTransactionRequest.builder()
+                .categoryId(childSavingsCategory.getId())
+                .amount(new BigDecimal("500.00"))
+                .currency("USD")
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now().minusDays(45))
+                .notes("Past month deposit")
+                .build();
+
+        mockMvc.perform(post("/v1/transactions")
+                        .header("X-User-Id", testUser.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(pastTx)))
+                .andExpect(status().isCreated());
+
+        // 3. Verify that the monthly goal returns 0.00 for the current month,
+        // while the overall/one-off goals would have captured the transaction.
+        mockMvc.perform(get("/v1/savings-goals")
+                        .header("X-User-Id", testUser.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + goal.getId() + ")].currentAmount", contains(0.00)));
+    }
 }

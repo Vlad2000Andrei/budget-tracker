@@ -289,4 +289,40 @@ public class TransactionRepositoryTest {
         // 9. FindDuplicateTransactionId with null values
         assertFalse(transactionRepository.findDuplicateTransactionId(testUser.getId(), null, null, null).isPresent());
     }
+
+    @Test
+    public void testFindAll_WithSavingsTransactions() {
+        // 1. Create a transaction with accountId = checkingAccount (deposit source)
+        Transaction tx = transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(groceryCategory.getId())
+                .accountId(checkingAccount.getId())
+                .amount(new BigDecimal("200.00"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("200.00"))
+                .convertedCurrency("EUR")
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.SAVINGS)
+                .date(LocalDateTime.now())
+                .build());
+
+        // 2. Link it in SAVINGS_TRANSACTIONS with checkingAccount (from) and savingsAccount (to)
+        dsl.insertInto(SAVINGS_TRANSACTIONS)
+                .set(SAVINGS_TRANSACTIONS.TRANSACTION_ID, tx.getId())
+                .set(SAVINGS_TRANSACTIONS.FROM_ACCOUNT_ID, checkingAccount.getId())
+                .set(SAVINGS_TRANSACTIONS.TO_ACCOUNT_ID, savingsAccount.getId())
+                .set(SAVINGS_TRANSACTIONS.TYPE, com.budgettracker.backend.jooq.enums.SavingsTransactionType.DEPOSIT)
+                .set(SAVINGS_TRANSACTIONS.CREATED_AT, LocalDateTime.now())
+                .execute();
+
+        // 3. Query with checkingAccount (fromAccountId) - should return the transaction
+        List<Transaction> checkingResults = transactionRepository.findAll(
+                testUser.getId(), checkingAccount.getId(), null, null, null, null);
+        assertTrue(checkingResults.stream().anyMatch(t -> t.getId().equals(tx.getId())));
+
+        // 4. Query with savingsAccount (toAccountId) - should return the transaction
+        List<Transaction> savingsResults = transactionRepository.findAll(
+                testUser.getId(), savingsAccount.getId(), null, null, null, null);
+        assertTrue(savingsResults.stream().anyMatch(t -> t.getId().equals(tx.getId())));
+    }
 }

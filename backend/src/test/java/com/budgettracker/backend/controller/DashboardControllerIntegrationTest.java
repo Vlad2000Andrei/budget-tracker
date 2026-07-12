@@ -205,12 +205,24 @@ public class DashboardControllerIntegrationTest {
                 .rolloverRule(RolloverRuleType.NONE)
                 .build());
 
+        // Create savings transaction to represent goal progress
+        transactionRepository.save(Transaction.builder()
+                .userId(testUser.getId())
+                .categoryId(savingsCategory.getId())
+                .accountId(checkingAccount.getId())
+                .amount(new BigDecimal("1200.0000"))
+                .currency("EUR")
+                .convertedAmount(new BigDecimal("1200.0000"))
+                .exchangeRate(BigDecimal.ONE)
+                .type(CategoryType.SAVINGS)
+                .date(today)
+                .build());
+
         // Create savings goal
         savingsGoalRepository.save(SavingsGoal.builder()
                 .userId(testUser.getId())
                 .categoryId(savingsCategory.getId())
                 .targetAmount(new BigDecimal("5000.0000"))
-                .currentAmount(new BigDecimal("1200.0000"))
                 .targetDate(LocalDate.now().plusMonths(6))
                 .build());
 

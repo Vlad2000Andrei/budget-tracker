@@ -415,7 +415,8 @@ function AllTab({ categoriesMap, accountsMap }) {
     
     if (accountFilter !== 'All') {
       const isMove = t.type === 'MOVE';
-      if (isMove) {
+      const isSavings = t.type === 'SAVINGS';
+      if (isMove || isSavings) {
         const fromMatch = t.fromAccountId ? String(t.fromAccountId) === accountFilter : false;
         const toMatch = t.toAccountId ? String(t.toAccountId) === accountFilter : false;
         if (!fromMatch && !toMatch) return false;

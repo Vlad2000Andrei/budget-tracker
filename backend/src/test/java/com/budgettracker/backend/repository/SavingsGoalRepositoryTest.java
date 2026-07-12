@@ -64,13 +64,11 @@ public class SavingsGoalRepositoryTest {
                 .categoryId(savingsCategory.getId())
                 .goalType(null) // Should default to ONE_OFF
                 .targetAmount(new BigDecimal("500.00"))
-                .currentAmount(null) // Should default to BigDecimal.ZERO
                 .build();
 
         SavingsGoal saved = savingsGoalRepository.save(goal);
         assertNotNull(saved.getId());
         assertEquals(SavingsGoalType.ONE_OFF, saved.getGoalType());
-        assertEquals(0, BigDecimal.ZERO.compareTo(saved.getCurrentAmount()));
     }
 
     @Test
@@ -80,7 +78,6 @@ public class SavingsGoalRepositoryTest {
                 .categoryId(savingsCategory.getId())
                 .goalType(SavingsGoalType.MONTHLY)
                 .targetAmount(new BigDecimal("500.00"))
-                .currentAmount(new BigDecimal("100.00"))
                 .build());
 
         Long id = goal.getId();
