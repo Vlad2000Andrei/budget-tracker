@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
 import { parseImportFile } from '../../utils/importParser';
+import { parseRobustDate, detectCompactDateFormat } from '../../utils/dateParser';
 import { useData } from '../../context/DataContext';
 import styles from './ImportPage.module.css';
 
@@ -41,111 +42,6 @@ function parseRobustAmount(val) {
   return isNaN(parsed) ? 0 : parsed;
 }
 
-function parseRobustDate(val) {
-  if (val === null || val === undefined || val === '') {
-    return new Date();
-  }
-
-  if (val instanceof Date) {
-    return isNaN(val.getTime()) ? new Date() : val;
-  }
-
-  if (typeof val === 'number') {
-    if (val > 0) {
-      if (val > 1000000000) {
-        return new Date(val < 10000000000 ? val * 1000 : val);
-      }
-      const excelEpoch = new Date(1899, 11, 30);
-      const d = new Date(excelEpoch.getTime() + val * 86400 * 1000);
-      return isNaN(d.getTime()) ? new Date() : d;
-    }
-    return new Date();
-  }
-
-  let str = val.toString().trim();
-  if (!str) return new Date();
-
-  const parsedMs = Date.parse(str);
-  if (!isNaN(parsedMs)) {
-    return new Date(parsedMs);
-  }
-
-  const parts = str.split(/[\sT]+/);
-  const datePart = parts[0];
-  let timePart = parts[1] || '';
-
-  let year = null;
-  let month = null;
-  let day = null;
-
-  const ymdMatch = datePart.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
-  if (ymdMatch) {
-    year = parseInt(ymdMatch[1], 10);
-    month = parseInt(ymdMatch[2], 10) - 1;
-    day = parseInt(ymdMatch[3], 10);
-  }
-
-  if (year === null) {
-    const dmyMatch = datePart.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
-    if (dmyMatch) {
-      const a = parseInt(dmyMatch[1], 10);
-      const b = parseInt(dmyMatch[2], 10);
-      year = parseInt(dmyMatch[3], 10);
-      if (a > 12) {
-        day = a;
-        month = b - 1;
-      } else if (b > 12) {
-        day = b;
-        month = a - 1;
-      } else {
-        day = a;
-        month = b - 1;
-      }
-    }
-  }
-
-  if (year === null) {
-    const dmyShortMatch = datePart.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2})$/);
-    if (dmyShortMatch) {
-      const a = parseInt(dmyShortMatch[1], 10);
-      const b = parseInt(dmyShortMatch[2], 10);
-      const shortYear = parseInt(dmyShortMatch[3], 10);
-      year = shortYear + (shortYear < 50 ? 2000 : 1900);
-      if (a > 12) {
-        day = a;
-        month = b - 1;
-      } else if (b > 12) {
-        day = b;
-        month = a - 1;
-      } else {
-        day = a;
-        month = b - 1;
-      }
-    }
-  }
-
-  if (year !== null && month !== null && day !== null) {
-    let hours = 0;
-    let minutes = 0;
-    let seconds = 0;
-
-    if (timePart) {
-      const timeMatch = timePart.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
-      if (timeMatch) {
-        hours = parseInt(timeMatch[1], 10);
-        minutes = parseInt(timeMatch[2], 10);
-        seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
-      }
-    }
-
-    const d = new Date(year, month, day, hours, minutes, seconds);
-    if (!isNaN(d.getTime())) {
-      return d;
-    }
-  }
-
-  return new Date();
-}
 
 function formatLocalISO(dateObj) {
   const pad = (n) => n.toString().padStart(2, '0');
@@ -322,11 +218,14 @@ export default function ImportPage() {
 
     // Map raw rows into candidate transactions
     const rawRows = parsedRawData.rows;
+    const dateColumnIndex = parseInt(columnMappings.date);
+    const compactFormat = detectCompactDateFormat(rawRows, dateColumnIndex);
+
     const targetAccount = accounts.find(a => a.id === parseInt(targetAccountId));
     const currencyDefault = targetAccount ? targetAccount.currency : 'USD';
 
     const candidates = rawRows.map((row, index) => {
-      const rawDateStr = row[parseInt(columnMappings.date)];
+      const rawDateStr = row[dateColumnIndex];
       const rawAmountStr = row[parseInt(columnMappings.amount)];
       const rawNotes = columnMappings.notes !== '' ? row[parseInt(columnMappings.notes)] : '';
       
@@ -344,7 +243,7 @@ export default function ImportPage() {
       const amountNum = parseRobustAmount(rawAmountStr);
 
       // Convert date: handle standard and custom formats robustly
-      const dateObj = parseRobustDate(rawDateStr);
+      const dateObj = parseRobustDate(rawDateStr, compactFormat);
 
       // Format LocalDateTime for Spring boot (YYYY-MM-DDTHH:MM:SS) in local timezone to avoid offset shifts
       const isoDateTime = formatLocalISO(dateObj); 
