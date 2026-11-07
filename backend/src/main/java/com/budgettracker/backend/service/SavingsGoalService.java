@@ -69,6 +69,15 @@ public class SavingsGoalService {
                 .collect(Collectors.toList());
     }
 
+    public SavingsGoalDto getSavingsGoal(Long goalId, User user) {
+        SavingsGoal goal = savingsGoalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Savings goal not found with ID: " + goalId));
+        if (!goal.getUserId().equals(user.getId())) {
+            throw new ForbiddenActionException("You do not have permission to view this savings goal");
+        }
+        return mapToDto(goal, user);
+    }
+
     @Transactional
     public SavingsGoalDto createSavingsGoal(CreateSavingsGoalRequest request, User user) {
         Category category = categoryRepository.findById(request.getCategoryId())

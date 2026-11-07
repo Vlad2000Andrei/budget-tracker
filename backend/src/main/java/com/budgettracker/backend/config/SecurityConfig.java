@@ -36,12 +36,24 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/v1/tokens", "/v1/tokens/logout").permitAll()
                 .requestMatchers(HttpMethod.GET, "/health").permitAll()
                 .requestMatchers("/swagger", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/.well-known/**").permitAll()
+                .requestMatchers("/v1/oauth/**").permitAll()
+                .requestMatchers("/sse", "/mcp/**").authenticated()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(handling -> handling
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setContentType("application/json");
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    String requestUri = request.getRequestURI();
+                    if (requestUri != null && (requestUri.startsWith("/mcp") || requestUri.startsWith("/sse"))) {
+                        String resourceMetadataUrl = org.springframework.web.servlet.support.ServletUriComponentsBuilder
+                                .fromContextPath(request)
+                                .path("/.well-known/oauth-protected-resource")
+                                .build()
+                                .toUriString();
+                        response.setHeader("WWW-Authenticate", "Bearer resource_metadata=\"" + resourceMetadataUrl + "\"");
+                    }
                     response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"" + authException.getMessage() + "\"}");
                 })
             )
@@ -55,8 +67,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(Collections.singletonList("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-User-Id"));
-        configuration.setExposedHeaders(Collections.singletonList("Location"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-User-Id", "Last-Event-ID"));
+        configuration.setExposedHeaders(Arrays.asList("Location", "WWW-Authenticate"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

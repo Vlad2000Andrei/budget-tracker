@@ -12,6 +12,15 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState(null);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
+  const mcpServerUrl = `${window.location.origin}/sse`;
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(mcpServerUrl);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
 
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
@@ -148,6 +157,66 @@ export default function SettingsPage() {
                 </button>
               </div>
             </form>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.mcpHeader}>
+              <span className={styles.mcpBadge}>🤖 MCP Server</span>
+              <h2>AI Agent Integration</h2>
+              <p>Connect Claude Desktop, Cursor, or external AI agents to Budget Tracker using the Model Context Protocol (MCP).</p>
+            </div>
+
+            <div className={styles.mcpDetails}>
+              <div>
+                <label className={styles.label}>Remote Server Endpoint (SSE)</label>
+                <div className={styles.mcpUrlBox}>
+                  <span className={styles.mcpUrlText}>{mcpServerUrl}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyUrl}
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                    style={{ padding: '6px 14px', fontSize: '13px' }}
+                  >
+                    {copiedUrl ? '✓ Copied' : 'Copy URL'}
+                  </button>
+                </div>
+                <span className={styles.helpText}>
+                  Supports native OAuth 2.1 authentication with PKCE. When an agent attempts to connect, a browser pop-up will ask you to approve access. No API keys needed!
+                </span>
+              </div>
+
+              <div className={styles.featureList}>
+                <div className={styles.featureItem}>
+                  <h3>💸 Transactions (Read/Write)</h3>
+                  <p>Agents can list, create, transfer, update, and delete transactions. Account is automatically resolved if not specified.</p>
+                </div>
+                <div className={styles.featureItem}>
+                  <h3>🏷️ Categories (Read/Write)</h3>
+                  <p>Inspect existing categories and create custom spending categories on the fly.</p>
+                </div>
+                <div className={styles.featureItem}>
+                  <h3>📊 Analytics (Read-Only)</h3>
+                  <p>Summary dashboard, category breakdowns, and net cash flow insights.</p>
+                </div>
+                <div className={styles.featureItem}>
+                  <h3>🎯 Goals (Read-Only)</h3>
+                  <p>Query active savings goals, progress toward targets, and goal transactions safely.</p>
+                </div>
+              </div>
+
+              <div>
+                <label className={styles.label}>Example Claude Desktop Config</label>
+                <pre className={styles.configPre}>
+{JSON.stringify({
+  mcpServers: {
+    budgetTracker: {
+      url: mcpServerUrl
+    }
+  }
+}, null, 2)}
+                </pre>
+              </div>
+            </div>
           </div>
         </div>
       </div>

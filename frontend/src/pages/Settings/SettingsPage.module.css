@@ -185,6 +185,102 @@
   border-color: #f5c6cb;
 }
 
+/* MCP AI Agent Section */
+.mcpHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.mcpBadge {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 4px 10px;
+  background-color: var(--md-tertiary-container, #d0e8ff);
+  color: var(--md-on-tertiary-container, #001d36);
+  border-radius: var(--md-shape-full);
+  font-size: var(--md-label-medium-size);
+  font-weight: 600;
+}
+
+.mcpHeader h2 {
+  font-size: var(--md-title-large-size);
+  font-weight: 700;
+  color: var(--md-on-surface);
+  margin: 0;
+}
+
+.mcpHeader p {
+  font-size: var(--md-body-medium-size);
+  color: var(--md-on-surface-variant);
+  margin: 0;
+}
+
+.mcpDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mcpUrlBox {
+  background-color: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-small);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.mcpUrlText {
+  color: var(--md-primary);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.featureList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.featureItem {
+  background-color: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-small);
+  padding: 12px;
+}
+
+.featureItem h3 {
+  font-size: var(--md-title-small-size);
+  font-weight: 600;
+  color: var(--md-on-surface);
+  margin: 0 0 4px 0;
+}
+
+.featureItem p {
+  font-size: var(--md-body-small-size);
+  color: var(--md-on-surface-variant);
+  margin: 0;
+}
+
+.configPre {
+  background-color: var(--md-surface-container-highest, #2b2b2b);
+  color: #f0f0f0;
+  padding: 16px;
+  border-radius: var(--md-shape-small);
+  font-family: monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  line-height: 1.5;
+  margin: 0;
+}
+
 @media (max-width: 480px) {
   .header {
     flex-direction: column;
