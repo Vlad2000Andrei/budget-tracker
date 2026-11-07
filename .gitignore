@@ -27,4 +27,8 @@ skills-lock.json
 # Build outputs
 target/
 
+# Local tools & scratch
+.codegraph/
+scratch/
+
 
