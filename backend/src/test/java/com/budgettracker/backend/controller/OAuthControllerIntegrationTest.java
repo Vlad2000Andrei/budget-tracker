@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
@@ -60,8 +61,26 @@ public class OAuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.authorization_endpoint", containsString("/v1/oauth/authorize")))
                 .andExpect(jsonPath("$.token_endpoint", containsString("/v1/oauth/token")))
+                .andExpect(jsonPath("$.registration_endpoint", containsString("/v1/oauth/register")))
                 .andExpect(jsonPath("$.response_types_supported", hasItem("code")))
                 .andExpect(jsonPath("$.code_challenge_methods_supported", hasItem("S256")));
+    }
+
+    @Test
+    void testDynamicClientRegistration() throws Exception {
+        Map<String, Object> regRequest = Map.of(
+                "client_name", "Test MCP Client",
+                "redirect_uris", List.of("http://127.0.0.1:37601/oauth/callback")
+        );
+
+        mockMvc.perform(post("/v1/oauth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(regRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.client_id", startsWith("mcp-client-")))
+                .andExpect(jsonPath("$.client_name", is("Test MCP Client")))
+                .andExpect(jsonPath("$.redirect_uris[0]", is("http://127.0.0.1:37601/oauth/callback")))
+                .andExpect(jsonPath("$.token_endpoint_auth_method", is("none")));
     }
 
     @Test

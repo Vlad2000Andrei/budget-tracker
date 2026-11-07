@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -49,11 +51,34 @@ public class OAuthController {
         metadata.put("issuer", base);
         metadata.put("authorization_endpoint", base + "/v1/oauth/authorize");
         metadata.put("token_endpoint", base + "/v1/oauth/token");
+        metadata.put("registration_endpoint", base + "/v1/oauth/register");
         metadata.put("response_types_supported", List.of("code"));
         metadata.put("code_challenge_methods_supported", List.of("S256", "plain"));
         metadata.put("grant_types_supported", List.of("authorization_code", "refresh_token"));
         metadata.put("token_endpoint_auth_methods_supported", List.of("none"));
         return ResponseEntity.ok(metadata);
+    }
+
+    @PostMapping(value = "/v1/oauth/register", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> registerClient(@RequestBody(required = false) Map<String, Object> body) {
+        String clientId = "mcp-client-" + UUID.randomUUID();
+        Map<String, Object> response = new HashMap<>();
+        response.put("client_id", clientId);
+        if (body != null && body.containsKey("client_name")) {
+            response.put("client_name", body.get("client_name"));
+        } else {
+            response.put("client_name", "MCP Client");
+        }
+        if (body != null && body.containsKey("redirect_uris")) {
+            response.put("redirect_uris", body.get("redirect_uris"));
+        } else {
+            response.put("redirect_uris", List.of("http://127.0.0.1/oauth/callback"));
+        }
+        response.put("grant_types", List.of("authorization_code", "refresh_token"));
+        response.put("response_types", List.of("code"));
+        response.put("token_endpoint_auth_method", "none");
+        response.put("client_id_issued_at", System.currentTimeMillis() / 1000L);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/.well-known/oauth-protected-resource")

@@ -22,6 +22,9 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    @org.springframework.beans.factory.annotation.Value("${app.oauth.issuer:}")
+    private String configuredIssuer;
+
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
@@ -47,11 +50,10 @@ public class SecurityConfig {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     String requestUri = request.getRequestURI();
                     if (requestUri != null && (requestUri.startsWith("/mcp") || requestUri.startsWith("/sse"))) {
-                        String resourceMetadataUrl = org.springframework.web.servlet.support.ServletUriComponentsBuilder
-                                .fromContextPath(request)
-                                .path("/.well-known/oauth-protected-resource")
-                                .build()
-                                .toUriString();
+                        String base = (configuredIssuer != null && !configuredIssuer.isBlank())
+                                ? configuredIssuer.replaceAll("/+$", "")
+                                : org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromContextPath(request).build().toUriString();
+                        String resourceMetadataUrl = base + "/.well-known/oauth-protected-resource";
                         response.setHeader("WWW-Authenticate", "Bearer resource_metadata=\"" + resourceMetadataUrl + "\"");
                     }
                     response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"" + authException.getMessage() + "\"}");
