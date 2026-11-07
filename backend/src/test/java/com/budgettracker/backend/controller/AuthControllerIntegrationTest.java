@@ -20,6 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import static com.budgettracker.backend.jooq.Tables.CATEGORIES;
 import static com.budgettracker.backend.jooq.Tables.USERS;
 import static org.hamcrest.Matchers.*;
@@ -224,5 +226,92 @@ public class AuthControllerIntegrationTest {
                 .andExpect(status().isNoContent())
                 .andExpect(cookie().exists("jwt"))
                 .andExpect(cookie().maxAge("jwt", 0));
+    }
+
+    @Test
+    public void testRefreshToken_Success() throws Exception {
+        User user = userRepository.save(User.builder()
+                .email("refresh-user@example.com")
+                .googleSub("google-refresh-sub")
+                .defaultCurrency("USD")
+                .displayName("Refresh User")
+                .build());
+
+        String token = jwtService.generateToken(user);
+
+        mockMvc.perform(post("/v1/tokens/refresh")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token", notNullValue()))
+                .andExpect(jsonPath("$.expiresAt", notNullValue()))
+                .andExpect(cookie().exists("jwt"))
+                .andExpect(cookie().httpOnly("jwt", true))
+                .andExpect(cookie().secure("jwt", false));
+    }
+
+    @Test
+    public void testRefreshToken_WithCookie_Success() throws Exception {
+        User user = userRepository.save(User.builder()
+                .email("refresh-cookie-user@example.com")
+                .googleSub("google-refresh-cookie-sub")
+                .defaultCurrency("EUR")
+                .displayName("Refresh Cookie User")
+                .build());
+
+        String token = jwtService.generateToken(user);
+
+        mockMvc.perform(post("/v1/tokens/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("jwt", token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token", notNullValue()))
+                .andExpect(jsonPath("$.expiresAt", notNullValue()))
+                .andExpect(cookie().exists("jwt"));
+    }
+
+    @Test
+    public void testRefreshToken_Unauthenticated_Returns401() throws Exception {
+        mockMvc.perform(post("/v1/tokens/refresh"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error", is("Unauthorized")));
+    }
+
+    @Test
+    public void testRefreshToken_InvalidToken_Returns401() throws Exception {
+        mockMvc.perform(post("/v1/tokens/refresh")
+                        .header("Authorization", "Bearer invalid-garbage-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error", is("Unauthorized")));
+    }
+
+    @Test
+    public void testRefreshToken_EnablesSubsequentCalls() throws Exception {
+        User user = userRepository.save(User.builder()
+                .email("sliding-user@example.com")
+                .googleSub("google-sliding-sub")
+                .defaultCurrency("USD")
+                .displayName("Sliding User")
+                .build());
+
+        String initialToken = jwtService.generateToken(user);
+
+        // Call refresh
+        String refreshResponse = mockMvc.perform(post("/v1/tokens/refresh")
+                        .header("Authorization", "Bearer " + initialToken))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        com.budgettracker.backend.dto.TokenResponse tokenResponse =
+                objectMapper.readValue(refreshResponse, com.budgettracker.backend.dto.TokenResponse.class);
+
+        assertNotNull(tokenResponse.getToken());
+        assertNotNull(tokenResponse.getExpiresAt());
+
+        // Use refreshed token on /v1/users/me
+        mockMvc.perform(get("/v1/users/me")
+                        .header("Authorization", "Bearer " + tokenResponse.getToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("sliding-user@example.com")));
     }
 }

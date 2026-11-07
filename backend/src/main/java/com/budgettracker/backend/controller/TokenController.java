@@ -78,31 +78,46 @@ public class TokenController {
                 .expiresAt(expiresAt)
                 .build();
 
-        ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .maxAge(jwtExpirationMs / 1000)
-                .sameSite("Strict")
-                .build();
+        ResponseCookie cookie = createJwtCookie(jwt, jwtExpirationMs / 1000);
 
         return ResponseEntity.created(URI.create("/v1/users/me"))
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(response);
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenResponse> refreshToken(User user) {
+        String jwt = jwtService.generateToken(user);
+        Instant expiresAt = Instant.now().plusMillis(jwtExpirationMs);
+
+        TokenResponse response = TokenResponse.builder()
+                .token(jwt)
+                .expiresAt(expiresAt)
+                .build();
+
+        ResponseCookie cookie = createJwtCookie(jwt, jwtExpirationMs / 1000);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
-        ResponseCookie cookie = ResponseCookie.from("jwt", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .maxAge(0)
-                .sameSite("Strict")
-                .build();
+        ResponseCookie cookie = createJwtCookie("", 0);
 
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .build();
+    }
+
+    private ResponseCookie createJwtCookie(String jwt, long maxAgeSeconds) {
+        return ResponseCookie.from("jwt", jwt)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .maxAge(maxAgeSeconds)
+                .sameSite("Strict")
                 .build();
     }
 }
